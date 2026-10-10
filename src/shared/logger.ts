@@ -1,7 +1,8 @@
 import { hostname } from 'node:os';
+import { DrizzleQueryError } from 'drizzle-orm';
 import type { FastifyRequest, FastifyServerOptions } from 'fastify';
 import { pino } from 'pino';
-import { env } from '../env.js';
+import { env } from '../env';
 
 const sensitiveKeys = ['password', 'passwordHash', 'newPassword', 'currentPassword', 'token', 'accessToken', 'refreshToken', 'cpf'];
 
@@ -29,3 +30,12 @@ export const loggerOptions = {
   },
   ...(env.NODE_ENV === 'development' && { transport: { target: 'pino-pretty' } }),
 } satisfies FastifyServerOptions['logger'];
+
+// Drizzle query params and pg error details can carry patient data, so only the root cause's identity is logged.
+export function loggableError(error: unknown) {
+  if (error instanceof DrizzleQueryError && error.cause) {
+    const { name, message, stack } = error.cause;
+    return { type: name, message, code: (error.cause as { code?: unknown }).code, stack };
+  }
+  return error;
+}

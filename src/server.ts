@@ -1,7 +1,7 @@
 import closeWithGrace from 'close-with-grace';
-import { buildApp } from './app.js';
-import { pool } from './db/index.js';
-import { env } from './env.js';
+import { buildApp } from './app';
+import { pool } from './db/client';
+import { env } from './env';
 
 const app = buildApp();
 
