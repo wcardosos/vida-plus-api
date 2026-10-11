@@ -10,6 +10,15 @@ const duration = z
     return Number(amount) * durationUnits[unit as keyof typeof durationUnits];
   });
 
+const timeZone = z.string().refine((value) => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}, 'must be a valid IANA time zone such as America/Fortaleza');
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   HOST: z.string().default('0.0.0.0'),
@@ -22,6 +31,7 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: duration.prefault('1h'),
   RESET_TOKEN_TTL: duration.prefault('30min'),
   PASSWORD_SETUP_TOKEN_TTL: duration.prefault('72h'),
+  APP_TIMEZONE: timeZone.default('America/Fortaleza'),
   TERMS_VERSION: z.string().trim().min(1).max(20).default('2026-10'),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   AUTH_RATE_LIMIT_WINDOW: duration.prefault('15min'),

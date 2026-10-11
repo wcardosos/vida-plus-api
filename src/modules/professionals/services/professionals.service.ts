@@ -41,6 +41,24 @@ export type ProfessionalDetails = ProfessionalWithAccount & {
   units: Unit[];
 };
 
+export type PendingAppointment = {
+  id: string;
+  startsAt: string;
+};
+
+export type ProfessionalPendency = {
+  type: string;
+  count: number;
+  appointments?: PendingAppointment[];
+};
+
+export type ProfessionalPendencyTarget = {
+  professionalId: string;
+  unitId?: string;
+};
+
+export type ProfessionalPendencyCheck = (target: ProfessionalPendencyTarget, tx: Transaction) => Promise<ProfessionalPendency | null>;
+
 export type ProfessionalsService = ReturnType<typeof createProfessionalsService>;
 
 export function createProfessionalsService(deps: {
@@ -50,6 +68,24 @@ export function createProfessionalsService(deps: {
   units: UnitsService;
 }) {
   const { db, professionals, auth, units } = deps;
+  const pendencyChecks: ProfessionalPendencyCheck[] = [];
+
+  function registerPendencyCheck(check: ProfessionalPendencyCheck): void {
+    pendencyChecks.push(check);
+  }
+
+  async function ensureNoPendencies(target: ProfessionalPendencyTarget, message: string, tx: Transaction): Promise<void> {
+    const pendencies: ProfessionalPendency[] = [];
+    for (const check of pendencyChecks) {
+      const pendency = await check(target, tx);
+      if (pendency && pendency.count > 0) {
+        pendencies.push(pendency);
+      }
+    }
+    if (pendencies.length > 0) {
+      throw new DomainError(message, { pendencies });
+    }
+  }
 
   function isAdmin(viewer: ProfessionalViewer): boolean {
     return viewer.role === 'ADMIN';
@@ -179,6 +215,7 @@ export function createProfessionalsService(deps: {
         throw new NotFoundError('Professional is not linked to this unit');
       }
       professional.unlinkUnit(unitId);
+      await ensureNoPendencies({ professionalId: id, unitId }, 'Professional has pendencies in this unit that prevent the unlinking', tx);
       await professionals.update(professional, tx);
     });
   }
@@ -192,6 +229,7 @@ export function createProfessionalsService(deps: {
       if (active) {
         await auth.activate(professional.userId, tx);
       } else {
+        await ensureNoPendencies({ professionalId: id }, 'Professional has pendencies that prevent the deactivation', tx);
         await auth.deactivate(professional.userId, tx);
       }
     });
@@ -212,5 +250,9 @@ export function createProfessionalsService(deps: {
     return { items: await withDetails(items, !isAdmin(viewer)), total };
   }
 
-  return { create, getById, getByUserId, update, linkUnit, unlinkUnit, deactivate, activate, list };
+  async function listByIds(ids: string[]): Promise<Professional[]> {
+    return professionals.findByIds([...new Set(ids)]);
+  }
+
+  return { registerPendencyCheck, create, getById, getByUserId, update, linkUnit, unlinkUnit, deactivate, activate, list, listByIds };
 }

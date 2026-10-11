@@ -5,11 +5,15 @@ import { errorResponse } from './error-response';
 import { AppError } from './errors';
 import { loggableError } from './logger';
 
-const uniqueViolationCode = '23505';
+const conflictMessages: Record<string, string> = {
+  '23505': 'Resource already exists',
+  '23P01': 'Resource conflicts with an existing one',
+};
 
-function isUniqueViolation(error: unknown) {
+function conflictMessage(error: unknown): string | undefined {
   const cause = error instanceof DrizzleQueryError ? error.cause : error;
-  return (cause as { code?: unknown } | undefined)?.code === uniqueViolationCode;
+  const code = (cause as { code?: unknown } | undefined)?.code;
+  return typeof code === 'string' ? conflictMessages[code] : undefined;
 }
 
 export function errorHandler(error: FastifyError, request: FastifyRequest, reply: FastifyReply) {
@@ -26,8 +30,9 @@ export function errorHandler(error: FastifyError, request: FastifyRequest, reply
     return reply.code(error.statusCode).send({ ...error.payload, ...errorResponse(error.statusCode, error.message) });
   }
 
-  if (isUniqueViolation(error)) {
-    return reply.code(409).send(errorResponse(409, 'Resource already exists'));
+  const conflict = conflictMessage(error);
+  if (conflict) {
+    return reply.code(409).send(errorResponse(409, conflict));
   }
 
   if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {

@@ -4,9 +4,15 @@ import type { Role } from '../../../shared/roles';
 import { Unit, type CreateUnitProps, type UpdateUnitProps } from '../entities/unit.entity';
 import type { Pagination, UnitFilters, UnitRepository } from '../repositories/unit.repository';
 
+export type PendingAppointment = {
+  id: string;
+  startsAt: string;
+};
+
 export type UnitPendency = {
   type: string;
   count: number;
+  appointments?: PendingAppointment[];
 };
 
 export type UnitDeactivationCheck = (unitId: string, tx: Transaction) => Promise<UnitPendency | null>;

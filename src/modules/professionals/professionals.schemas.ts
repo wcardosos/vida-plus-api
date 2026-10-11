@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { errorResponseSchema } from '../../shared/error-response';
 import { brazilianStates } from '../../shared/value-objects/address';
 import { emailSchema } from '../auth/auth.schemas';
 import { unitTypeSchema } from '../units/units.schemas';
@@ -128,6 +129,24 @@ export const professionalPageResponseSchema = z.object({
   pageSize: z.number().int(),
   total: z.number().int(),
 });
+
+export const professionalPendencyErrorSchema = errorResponseSchema
+  .extend({
+    pendencies: z
+      .array(
+        z.object({
+          type: z.string().describe('e.g. FUTURE_APPOINTMENTS'),
+          count: z.number().int(),
+          appointments: z
+            .array(z.object({ id: z.uuid(), startsAt: z.iso.datetime() }))
+            .optional()
+            .describe('The scheduled appointments behind a FUTURE_APPOINTMENTS pendency'),
+        }),
+      )
+      .optional()
+      .describe('What prevents the operation, by type and quantity'),
+  })
+  .meta({ id: 'ProfessionalPendencyError' });
 
 export function toProfessionalSummaryResponse({ professional, units }: ProfessionalDetails): z.infer<typeof professionalSummaryResponseSchema> {
   return {

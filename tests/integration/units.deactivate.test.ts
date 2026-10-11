@@ -3,11 +3,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app';
 import { pool } from '../../src/db/client';
 import type { Role } from '../../src/shared/roles';
-import { clearUnits, clearUsers, findUnits, insertUnit, tokenFor } from './helpers';
+import { clearUnits, clearUsers, findUnits, insertAppointment, insertPatient, insertProfessional, insertUnit, tokenFor } from './helpers';
+import { clock, localTime, monday } from './scheduling-helpers';
 
 const unitsWithFutureAppointments = new Set<string>();
 
 const app = buildApp({
+  clock,
   configureContainer: (container) => {
     container.services.units.registerDeactivationCheck(async (unitId) =>
       unitsWithFutureAppointments.has(unitId) ? { type: 'FUTURE_APPOINTMENTS', count: 3 } : null,
@@ -67,6 +69,21 @@ describe('POST /units/:id/deactivate', () => {
     });
     expect((await findUnits())[0].active).toBe(true);
     expect(await patientListing()).toEqual([unit.id]);
+  });
+
+  it('with future appointments: responds 422 listing them', async () => {
+    const unit = await insertUnit();
+    const { professional } = await insertProfessional({ unitIds: [unit.id] });
+    const { patient } = await insertPatient();
+    const appointment = await insertAppointment({ patientId: patient.id, professionalId: professional.id, unitId: unit.id, startsAt: localTime(monday, '09:00') });
+
+    const response = await deactivateUnit(unit.id);
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json().pendencies).toEqual([
+      { type: 'FUTURE_APPOINTMENTS', count: 1, appointments: [{ id: appointment.id, startsAt: appointment.startsAt.toISOString() }] },
+    ]);
+    expect((await findUnits())[0].active).toBe(true);
   });
 
   it('unit already inactive: responds 204 again', async () => {

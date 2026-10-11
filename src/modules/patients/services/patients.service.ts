@@ -180,5 +180,9 @@ export function createPatientsService(deps: {
     return patients.findMany(filters, pagination);
   }
 
-  return { register, createByAdmin, getById, getByUserId, updateByUserId, update, correctIdentity, deactivate, activate, list };
+  async function listByIds(ids: string[]): Promise<Patient[]> {
+    return patients.findByIds([...new Set(ids)]);
+  }
+
+  return { register, createByAdmin, getById, getByUserId, updateByUserId, update, correctIdentity, deactivate, activate, list, listByIds };
 }

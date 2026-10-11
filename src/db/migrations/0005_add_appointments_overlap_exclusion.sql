@@ -1,0 +1,1 @@
+ALTER TABLE "appointments" ADD CONSTRAINT "appointments_professional_overlap_excl" EXCLUDE USING gist ("professional_id" WITH =, tstzrange("starts_at", "ends_at") WITH &&) WHERE ("status" <> 'CANCELED');

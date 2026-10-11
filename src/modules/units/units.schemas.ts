@@ -58,7 +58,16 @@ export const unitPageResponseSchema = z.object({
 export const unitDeactivationErrorSchema = errorResponseSchema
   .extend({
     pendencies: z
-      .array(z.object({ type: z.string().describe('e.g. FUTURE_APPOINTMENTS'), count: z.number().int() }))
+      .array(
+        z.object({
+          type: z.string().describe('e.g. FUTURE_APPOINTMENTS'),
+          count: z.number().int(),
+          appointments: z
+            .array(z.object({ id: z.uuid(), startsAt: z.iso.datetime() }))
+            .optional()
+            .describe('The scheduled appointments behind a FUTURE_APPOINTMENTS pendency'),
+        }),
+      )
       .optional()
       .describe('What prevents the deactivation, by type and quantity'),
   })

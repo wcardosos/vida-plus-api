@@ -139,6 +139,18 @@ export function createProfessionalRepository(db: Database) {
       return withUnits(row, executor);
     },
 
+    async findByIds(ids: string[]): Promise<Professional[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+      const rows = await db.select().from(professionals).where(inArray(professionals.id, ids));
+      const unitIds = await loadUnitIds(
+        rows.map((row) => row.id),
+        db,
+      );
+      return rows.map((row) => toEntity(row, unitIds.get(row.id) ?? []));
+    },
+
     async findByUserId(userId: string, executor: DbExecutor = db): Promise<Professional | null> {
       const [row] = await executor.select().from(professionals).where(eq(professionals.userId, userId));
       return withUnits(row, executor);

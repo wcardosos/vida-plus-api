@@ -1,4 +1,4 @@
-import { and, asc, count, eq, like, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, like, sql, type SQL } from 'drizzle-orm';
 import type { Database, DbExecutor, Transaction } from '../../../db/client';
 import { Address, type BrazilianState } from '../../../shared/value-objects/address';
 import { users } from '../../auth/schema';
@@ -118,6 +118,14 @@ export function createPatientRepository(db: Database) {
     async findByIdForUpdate(id: string, executor: Transaction): Promise<Patient | null> {
       const [row] = await executor.select().from(patients).where(eq(patients.id, id)).for('update');
       return row ? toEntity(row) : null;
+    },
+
+    async findByIds(ids: string[]): Promise<Patient[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+      const rows = await db.select().from(patients).where(inArray(patients.id, ids));
+      return rows.map(toEntity);
     },
 
     async findByUserId(userId: string, executor: DbExecutor = db): Promise<Patient | null> {

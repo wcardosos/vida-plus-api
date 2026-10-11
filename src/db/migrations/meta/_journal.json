@@ -29,6 +29,20 @@
       "when": 1791734024518,
       "tag": "0003_create_patients_professionals_and_consents",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791736982900,
+      "tag": "0004_create_scheduling_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791736989564,
+      "tag": "0005_add_appointments_overlap_exclusion",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,13 @@ import {
 } from '../../src/modules/professionals/entities/professional.entity';
 import { createProfessionalRepository } from '../../src/modules/professionals/repositories/professional.repository';
 import { professionals, professionalUnits } from '../../src/modules/professionals/schema';
+import { Appointment, type AppointmentProps } from '../../src/modules/scheduling/entities/appointment.entity';
+import { ScheduleAvailability, type CreateScheduleAvailabilityProps } from '../../src/modules/scheduling/entities/schedule-availability.entity';
+import { ScheduleBlock, type CreateScheduleBlockProps } from '../../src/modules/scheduling/entities/schedule-block.entity';
+import { createAppointmentRepository } from '../../src/modules/scheduling/repositories/appointment.repository';
+import { createScheduleAvailabilityRepository } from '../../src/modules/scheduling/repositories/schedule-availability.repository';
+import { createScheduleBlockRepository } from '../../src/modules/scheduling/repositories/schedule-block.repository';
+import { appointments, scheduleAvailabilities, scheduleBlocks } from '../../src/modules/scheduling/schema';
 import { Unit, type UnitType } from '../../src/modules/units/entities/unit.entity';
 import { createUnitRepository } from '../../src/modules/units/repositories/unit.repository';
 import { units } from '../../src/modules/units/schema';
@@ -29,6 +36,9 @@ const userRepository = createUserRepository(db);
 const unitRepository = createUnitRepository(db);
 const patientRepository = createPatientRepository(db);
 const professionalRepository = createProfessionalRepository(db);
+const availabilityRepository = createScheduleAvailabilityRepository(db);
+const blockRepository = createScheduleBlockRepository(db);
+const appointmentRepository = createAppointmentRepository(db);
 
 export type InsertUserOptions = {
   email?: string;
@@ -67,7 +77,14 @@ export async function findAuditLogs() {
   return db.select().from(auditLogs);
 }
 
+export async function clearSchedules() {
+  await db.delete(appointments);
+  await db.delete(scheduleBlocks);
+  await db.delete(scheduleAvailabilities);
+}
+
 export async function clearUsers() {
+  await clearSchedules();
   await db.delete(lgpdConsents);
   await db.delete(patients);
   await db.delete(professionalUnits);
@@ -137,6 +154,7 @@ export async function insertUnit(options: InsertUnitOptions = {}): Promise<Unit>
 }
 
 export async function clearUnits() {
+  await clearSchedules();
   await db.delete(professionalUnits);
   await db.delete(units);
 }
@@ -216,4 +234,51 @@ export async function findProfessionals() {
 
 export async function findProfessionalUnits() {
   return db.select().from(professionalUnits);
+}
+
+export async function insertAvailability(
+  props: Pick<CreateScheduleAvailabilityProps, 'professionalId' | 'unitId'> & Partial<CreateScheduleAvailabilityProps>,
+): Promise<ScheduleAvailability> {
+  const availability = ScheduleAvailability.create({
+    weekday: 1,
+    startTime: '08:00',
+    endTime: '12:00',
+    slotMinutes: 30,
+    modality: 'IN_PERSON',
+    ...props,
+  });
+  await availabilityRepository.insert(availability);
+  return availability;
+}
+
+export async function findAvailabilities() {
+  return db.select().from(scheduleAvailabilities);
+}
+
+export async function insertBlock(props: CreateScheduleBlockProps): Promise<ScheduleBlock> {
+  const block = ScheduleBlock.create(props);
+  await blockRepository.insert(block);
+  return block;
+}
+
+export type InsertAppointmentProps = Pick<AppointmentProps, 'patientId' | 'professionalId' | 'unitId' | 'startsAt'> & Partial<AppointmentProps>;
+
+export async function insertAppointment(props: InsertAppointmentProps): Promise<Appointment> {
+  const appointment = Appointment.restore({
+    id: randomUUID(),
+    modality: 'IN_PERSON',
+    endsAt: new Date(props.startsAt.getTime() + 30 * 60_000),
+    status: 'SCHEDULED',
+    cancellationReason: null,
+    canceledBy: null,
+    canceledAt: null,
+    createdAt: new Date(),
+    ...props,
+  });
+  await appointmentRepository.insert(appointment);
+  return appointment;
+}
+
+export async function findAppointments() {
+  return db.select().from(appointments);
 }

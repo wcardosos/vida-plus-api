@@ -9,6 +9,7 @@ import {
   listProfessionalsQuerySchema,
   professionalPageResponseSchema,
   professionalParamsSchema,
+  professionalPendencyErrorSchema,
   professionalResponseSchema,
   professionalUnitParamsSchema,
   toProfessionalResponse,
@@ -165,7 +166,8 @@ export function professionalsRoutes(professionalsService: ProfessionalsService):
         preHandler: requireRole('ADMIN'),
         schema: {
           tags: ['professionals'],
-          summary: 'Unlink the professional from a unit; the last unit cannot be unlinked',
+          summary:
+            'Unlink the professional from a unit; the last unit cannot be unlinked, nor one with future appointments. The availabilities in the unit are removed',
           security: [{ bearerAuth: [] }],
           params: professionalUnitParamsSchema,
           response: {
@@ -174,7 +176,7 @@ export function professionalsRoutes(professionalsService: ProfessionalsService):
             401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
-            422: errorResponseSchema,
+            422: professionalPendencyErrorSchema,
           },
         },
       },
@@ -191,7 +193,7 @@ export function professionalsRoutes(professionalsService: ProfessionalsService):
         preHandler: requireRole('ADMIN'),
         schema: {
           tags: ['professionals'],
-          summary: 'Deactivate the professional account; the record and unit links are kept',
+          summary: 'Deactivate the professional account; fails while there are future appointments. The record and unit links are kept',
           security: [{ bearerAuth: [] }],
           params: professionalParamsSchema,
           response: {
@@ -200,6 +202,7 @@ export function professionalsRoutes(professionalsService: ProfessionalsService):
             401: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
+            422: professionalPendencyErrorSchema,
           },
         },
       },

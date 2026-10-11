@@ -20,5 +20,9 @@ export function createLgpdService(deps: { consents: LgpdConsentRepository }) {
     return consent;
   }
 
-  return { grantConsent };
+  async function hasActiveConsent(patientId: string, purpose: ConsentPurpose, tx?: Transaction): Promise<boolean> {
+    return consents.existsActive(patientId, purpose, tx);
+  }
+
+  return { grantConsent, hasActiveConsent };
 }

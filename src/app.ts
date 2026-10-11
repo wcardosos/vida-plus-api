@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createContainer, type Container } from './container';
 import { db } from './db/client';
 import { env } from './env';
+import type { AppointmentNotifier } from './modules/scheduling/services/appointment-notifier';
 import { authPlugin } from './plugins/auth';
 import { rateLimitPlugin } from './plugins/rate-limit';
 import { swaggerPlugin } from './plugins/swagger';
@@ -15,6 +16,8 @@ import { loggerOptions } from './shared/logger';
 
 export type BuildAppOptions = {
   emailSender?: EmailSender;
+  appointmentNotifier?: AppointmentNotifier;
+  clock?: () => Date;
   configureContainer?: (container: Container) => void;
 };
 
@@ -38,7 +41,13 @@ export function buildApp(options: BuildAppOptions = {}) {
     reply.code(404).send(errorResponse(404, `Route ${request.method}:${path} not found`));
   });
 
-  const container = createContainer({ db, logger: app.log, emailSender: options.emailSender });
+  const container = createContainer({
+    db,
+    logger: app.log,
+    emailSender: options.emailSender,
+    appointmentNotifier: options.appointmentNotifier,
+    clock: options.clock,
+  });
   options.configureContainer?.(container);
 
   app.register(swaggerPlugin);

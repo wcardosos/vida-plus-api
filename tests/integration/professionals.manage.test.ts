@@ -3,9 +3,23 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app';
 import { pool } from '../../src/db/client';
 import type { Role } from '../../src/shared/roles';
-import { clearUnits, clearUsers, findProfessionals, findProfessionalUnits, findUsers, insertProfessional, insertUnit, insertUser, signToken, tokenFor } from './helpers';
+import {
+  clearUnits,
+  clearUsers,
+  findProfessionals,
+  findProfessionalUnits,
+  findUsers,
+  insertAppointment,
+  insertPatient,
+  insertProfessional,
+  insertUnit,
+  insertUser,
+  signToken,
+  tokenFor,
+} from './helpers';
+import { clock, localTime, monday, now } from './scheduling-helpers';
 
-const app = buildApp();
+const app = buildApp({ clock });
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
@@ -224,7 +238,51 @@ describe('POST /professionals/:id/deactivate and /activate', () => {
     expect((await request('POST', `/professionals/${randomUUID()}/activate`, token)).statusCode).toBe(404);
   });
 
-  it.todo('responds 422 listing the future appointments when deactivating or unlinking the unit of a scheduled appointment');
+});
+
+describe('future appointments', () => {
+  async function withAppointments() {
+    const centro = await insertUnit();
+    const norte = await insertUnit();
+    const { professional, user } = await insertProfessional({ unitIds: [centro.id, norte.id] });
+    const { patient } = await insertPatient();
+    const base = { patientId: patient.id, professionalId: professional.id };
+    const tomorrow = await insertAppointment({ ...base, unitId: centro.id, startsAt: localTime(monday, '09:00') });
+    await insertAppointment({ ...base, unitId: centro.id, startsAt: new Date(now.getTime() - 3_600_000) });
+    await insertAppointment({ ...base, unitId: norte.id, startsAt: localTime(monday, '10:00'), status: 'CANCELED', cancellationReason: 'x' });
+    return { centro, norte, professional, user, tomorrow };
+  }
+
+  it('responds 422 listing them when deactivating the professional', async () => {
+    const { professional, user, tomorrow } = await withAppointments();
+
+    const response = await request('POST', `/professionals/${professional.id}/deactivate`, await adminToken());
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({
+      message: 'Professional has pendencies that prevent the deactivation',
+      error: 'Unprocessable Entity',
+      statusCode: 422,
+      pendencies: [{ type: 'FUTURE_APPOINTMENTS', count: 1, appointments: [{ id: tomorrow.id, startsAt: tomorrow.startsAt.toISOString() }] }],
+    });
+    expect((await findUsers()).find((row) => row.id === user.id)?.active).toBe(true);
+  });
+
+  it('responds 422 when unlinking the unit of a future appointment, and unlinks a unit without them', async () => {
+    const { centro, norte, professional, tomorrow } = await withAppointments();
+    const token = await adminToken();
+
+    const refused = await request('DELETE', `/professionals/${professional.id}/units/${centro.id}`, token);
+
+    expect(refused.statusCode).toBe(422);
+    expect(refused.json().pendencies).toEqual([
+      { type: 'FUTURE_APPOINTMENTS', count: 1, appointments: [{ id: tomorrow.id, startsAt: tomorrow.startsAt.toISOString() }] },
+    ]);
+    expect(await linkedUnitIds(professional.id)).toEqual([centro.id, norte.id]);
+
+    expect((await request('DELETE', `/professionals/${professional.id}/units/${norte.id}`, token)).statusCode).toBe(204);
+    expect(await linkedUnitIds(professional.id)).toEqual([centro.id]);
+  });
 });
 
 describe('access control', () => {
