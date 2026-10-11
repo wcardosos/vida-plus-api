@@ -5,10 +5,16 @@ import { auditLogs } from '../../src/modules/audit/schema';
 import { User } from '../../src/modules/auth/entities/user.entity';
 import { createUserRepository } from '../../src/modules/auth/repositories/user.repository';
 import { passwordResetTokens, users } from '../../src/modules/auth/schema';
+import { Unit, type UnitType } from '../../src/modules/units/entities/unit.entity';
+import { createUnitRepository } from '../../src/modules/units/repositories/unit.repository';
+import { units } from '../../src/modules/units/schema';
 import type { EmailMessage, EmailSender } from '../../src/shared/email-sender';
+import type { AddressInput } from '../../src/shared/value-objects/address';
 import type { Role } from '../../src/shared/roles';
+import { generateCnpj } from '../fixtures/cnpj';
 
 const userRepository = createUserRepository(db);
+const unitRepository = createUnitRepository(db);
 
 export type InsertUserOptions = {
   email?: string;
@@ -75,4 +81,47 @@ let ipCounter = 0;
 export function nextIp() {
   ipCounter += 1;
   return `198.18.${Math.floor(ipCounter / 256) % 256}.${ipCounter % 256}`;
+}
+
+export function addressInput(overrides: Partial<AddressInput> = {}): AddressInput {
+  return {
+    street: 'Avenida Paulista',
+    number: '1000',
+    complement: null,
+    district: 'Bela Vista',
+    city: 'São Paulo',
+    state: 'SP',
+    zipCode: '01310-100',
+    ...overrides,
+  };
+}
+
+export type InsertUnitOptions = {
+  name?: string;
+  type?: UnitType;
+  cnpj?: string;
+  address?: Partial<AddressInput>;
+  active?: boolean;
+};
+
+export async function insertUnit(options: InsertUnitOptions = {}): Promise<Unit> {
+  const unit = Unit.create({
+    name: options.name ?? `Unit ${randomUUID()}`,
+    type: options.type ?? 'CLINIC',
+    cnpj: options.cnpj ?? generateCnpj(),
+    address: addressInput(options.address),
+  });
+  if (options.active === false) {
+    unit.deactivate();
+  }
+  await unitRepository.insert(unit);
+  return unit;
+}
+
+export async function clearUnits() {
+  await db.delete(units);
+}
+
+export async function findUnits() {
+  return db.select().from(units);
 }

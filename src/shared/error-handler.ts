@@ -23,7 +23,7 @@ export function errorHandler(error: FastifyError, request: FastifyRequest, reply
   }
 
   if (error instanceof AppError) {
-    return reply.code(error.statusCode).send(errorResponse(error.statusCode, error.message));
+    return reply.code(error.statusCode).send({ ...error.payload, ...errorResponse(error.statusCode, error.message) });
   }
 
   if (isUniqueViolation(error)) {

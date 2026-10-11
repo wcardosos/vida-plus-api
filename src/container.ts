@@ -3,6 +3,7 @@ import type { Database } from './db/client';
 import { env } from './env';
 import { createAuditModule } from './modules/audit/audit.module';
 import { createAuthModule } from './modules/auth/auth.module';
+import { createUnitsModule } from './modules/units/units.module';
 import { createConsoleEmailSender, type EmailSender } from './shared/email-sender';
 
 export type ContainerDeps = {
@@ -22,10 +23,11 @@ export function createContainer(deps: ContainerDeps) {
     emailSender,
     config: { appUrl: env.APP_URL, resetTokenTtlMs: env.RESET_TOKEN_TTL },
   });
+  const units = createUnitsModule({ db });
 
   return {
-    services: { audit: audit.service, auth: auth.service },
-    routes: [audit.routes, auth.routes] satisfies FastifyPluginAsync[],
+    services: { audit: audit.service, auth: auth.service, units: units.service },
+    routes: [audit.routes, auth.routes, units.routes] satisfies FastifyPluginAsync[],
   };
 }
 

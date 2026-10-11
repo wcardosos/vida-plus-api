@@ -1,7 +1,10 @@
 export abstract class AppError extends Error {
   abstract readonly statusCode: number;
 
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly payload?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = new.target.name;
   }

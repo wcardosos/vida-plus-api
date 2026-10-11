@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createContainer } from './container';
+import { createContainer, type Container } from './container';
 import { db } from './db/client';
 import { env } from './env';
 import { authPlugin } from './plugins/auth';
@@ -15,6 +15,7 @@ import { loggerOptions } from './shared/logger';
 
 export type BuildAppOptions = {
   emailSender?: EmailSender;
+  configureContainer?: (container: Container) => void;
 };
 
 export function buildApp(options: BuildAppOptions = {}) {
@@ -38,6 +39,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
 
   const container = createContainer({ db, logger: app.log, emailSender: options.emailSender });
+  options.configureContainer?.(container);
 
   app.register(swaggerPlugin);
   app.register(rateLimitPlugin);
