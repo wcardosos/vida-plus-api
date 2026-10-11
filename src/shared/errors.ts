@@ -26,3 +26,7 @@ export class ConflictError extends AppError {
 export class DomainError extends AppError {
   readonly statusCode = 422;
 }
+
+export class TooManyRequestsError extends AppError {
+  readonly statusCode = 429;
+}

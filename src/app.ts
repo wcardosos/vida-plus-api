@@ -6,12 +6,18 @@ import { createContainer } from './container';
 import { db } from './db/client';
 import { env } from './env';
 import { authPlugin } from './plugins/auth';
+import { rateLimitPlugin } from './plugins/rate-limit';
 import { swaggerPlugin } from './plugins/swagger';
+import type { EmailSender } from './shared/email-sender';
 import { errorHandler } from './shared/error-handler';
 import { errorResponse } from './shared/error-response';
 import { loggerOptions } from './shared/logger';
 
-export function buildApp() {
+export type BuildAppOptions = {
+  emailSender?: EmailSender;
+};
+
+export function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({
     logger: loggerOptions,
     genReqId: () => randomUUID(),
@@ -31,10 +37,11 @@ export function buildApp() {
     reply.code(404).send(errorResponse(404, `Route ${request.method}:${path} not found`));
   });
 
-  app.register(swaggerPlugin);
-  app.register(authPlugin);
+  const container = createContainer({ db, logger: app.log, emailSender: options.emailSender });
 
-  const container = createContainer({ db, logger: app.log });
+  app.register(swaggerPlugin);
+  app.register(rateLimitPlugin);
+  app.register(authPlugin, { loadAuthenticatedUser: container.services.auth.findAuthenticatedUser });
 
   app.register(async (instance) => {
     instance.withTypeProvider<ZodTypeProvider>().get(

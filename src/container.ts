@@ -1,13 +1,31 @@
 import type { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import type { Database } from './db/client';
+import { env } from './env';
 import { createAuditModule } from './modules/audit/audit.module';
+import { createAuthModule } from './modules/auth/auth.module';
+import { createConsoleEmailSender, type EmailSender } from './shared/email-sender';
 
-export function createContainer(deps: { db: Database; logger: FastifyBaseLogger }) {
-  const audit = createAuditModule(deps);
+export type ContainerDeps = {
+  db: Database;
+  logger: FastifyBaseLogger;
+  emailSender?: EmailSender;
+};
+
+export function createContainer(deps: ContainerDeps) {
+  const { db, logger } = deps;
+  const emailSender = deps.emailSender ?? createConsoleEmailSender(logger);
+
+  const audit = createAuditModule({ db, logger });
+  const auth = createAuthModule({
+    db,
+    logger,
+    emailSender,
+    config: { appUrl: env.APP_URL, resetTokenTtlMs: env.RESET_TOKEN_TTL },
+  });
 
   return {
-    services: { audit: audit.service },
-    routes: [audit.routes] satisfies FastifyPluginAsync[],
+    services: { audit: audit.service, auth: auth.service },
+    routes: [audit.routes, auth.routes] satisfies FastifyPluginAsync[],
   };
 }
 

@@ -4,7 +4,7 @@ import { buildApp } from '../../src/app';
 import { db, pool } from '../../src/db/client';
 import { AuditLog, type AuditLogProps } from '../../src/modules/audit/audit.entity';
 import { createAuditRepository } from '../../src/modules/audit/audit.repository';
-import { clearAuditLogs, findAuditLogs, signToken } from './helpers';
+import { clearAuditLogs, clearUsers, findAuditLogs, tokenFor } from './helpers';
 
 const app = buildApp();
 const repository = createAuditRepository(db);
@@ -39,7 +39,8 @@ async function seed(...entries: AuditLogProps[]) {
   }
 }
 
-function listAuditLogs(query: Record<string, string | number> = {}, token = signToken(app, 'ADMIN')) {
+async function listAuditLogs(query: Record<string, string | number> = {}, token?: string) {
+  token ??= await tokenFor(app, 'ADMIN');
   return app.inject({
     method: 'GET',
     url: '/audit-logs',
@@ -63,6 +64,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await clearAuditLogs();
+  await clearUsers();
 });
 
 describe('GET /audit-logs', () => {
@@ -81,7 +83,7 @@ describe('GET /audit-logs', () => {
     });
 
     it.each(['PATIENT', 'PROFESSIONAL'] as const)('responds 403 to the %s role', async (role) => {
-      const response = await listAuditLogs({}, signToken(app, role));
+      const response = await listAuditLogs({}, await tokenFor(app, role));
 
       expect(response.statusCode).toBe(403);
       expect(response.json()).toMatchObject({ error: 'Forbidden', statusCode: 403 });
@@ -221,8 +223,9 @@ describe('GET /audit-logs', () => {
   it.each(['POST', 'PUT', 'PATCH', 'DELETE'] as const)('does not expose %s', async (method) => {
     await seed(logs.a);
 
-    const collection = await app.inject({ method, url: '/audit-logs', headers: { authorization: `Bearer ${signToken(app, 'ADMIN')}` } });
-    const item = await app.inject({ method, url: `/audit-logs/${logs.a.id}`, headers: { authorization: `Bearer ${signToken(app, 'ADMIN')}` } });
+    const token = await tokenFor(app, 'ADMIN');
+    const collection = await app.inject({ method, url: '/audit-logs', headers: { authorization: `Bearer ${token}` } });
+    const item = await app.inject({ method, url: `/audit-logs/${logs.a.id}`, headers: { authorization: `Bearer ${token}` } });
 
     expect(collection.statusCode).toBe(404);
     expect(item.statusCode).toBe(404);
