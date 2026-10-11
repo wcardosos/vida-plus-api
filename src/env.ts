@@ -21,6 +21,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: duration.prefault('1h'),
   RESET_TOKEN_TTL: duration.prefault('30min'),
+  PASSWORD_SETUP_TOKEN_TTL: duration.prefault('72h'),
+  TERMS_VERSION: z.string().trim().min(1).max(20).default('2026-10'),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   AUTH_RATE_LIMIT_WINDOW: duration.prefault('15min'),
   SEED_ADMIN_EMAIL: z.email().optional(),

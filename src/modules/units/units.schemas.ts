@@ -1,19 +1,10 @@
 import { z } from 'zod';
 import { errorResponseSchema } from '../../shared/error-response';
 import { Address, brazilianStates } from '../../shared/value-objects/address';
+import { addressBodySchema, addressResponseSchema } from '../../shared/value-objects/address.schemas';
 import { Unit, unitTypes } from './entities/unit.entity';
 
 export const unitTypeSchema = z.enum(unitTypes).meta({ id: 'UnitType' });
-
-export const addressBodySchema = z.object({
-  street: z.string().max(Address.maxLength.street),
-  number: z.string().max(Address.maxLength.number).describe('Street number; free text such as "s/n" or "123-A"'),
-  complement: z.string().max(Address.maxLength.complement).nullish(),
-  district: z.string().max(Address.maxLength.district),
-  city: z.string().max(Address.maxLength.city),
-  state: z.string().max(2).describe('Brazilian state abbreviation (UF), e.g. SP'),
-  zipCode: z.string().max(9).describe('CEP with 8 digits, with or without hyphen'),
-});
 
 const unitNameSchema = z.string().max(Unit.nameMaxLength).describe(`Between ${Unit.nameMinLength} and ${Unit.nameMaxLength} characters`);
 
@@ -45,18 +36,6 @@ export const listUnitsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
 });
-
-export const addressResponseSchema = z
-  .object({
-    street: z.string(),
-    number: z.string(),
-    complement: z.string().nullable(),
-    district: z.string(),
-    city: z.string(),
-    state: z.enum(brazilianStates),
-    zipCode: z.string(),
-  })
-  .meta({ id: 'Address' });
 
 export const unitResponseSchema = z
   .object({

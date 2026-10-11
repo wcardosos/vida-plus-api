@@ -5,6 +5,17 @@ import { auditLogs } from '../../src/modules/audit/schema';
 import { User } from '../../src/modules/auth/entities/user.entity';
 import { createUserRepository } from '../../src/modules/auth/repositories/user.repository';
 import { passwordResetTokens, users } from '../../src/modules/auth/schema';
+import { lgpdConsents } from '../../src/modules/lgpd/schema';
+import { Patient } from '../../src/modules/patients/entities/patient.entity';
+import { createPatientRepository } from '../../src/modules/patients/repositories/patient.repository';
+import { patients } from '../../src/modules/patients/schema';
+import {
+  Professional,
+  type CouncilRegistrationInput,
+  type ProfessionalCategory,
+} from '../../src/modules/professionals/entities/professional.entity';
+import { createProfessionalRepository } from '../../src/modules/professionals/repositories/professional.repository';
+import { professionals, professionalUnits } from '../../src/modules/professionals/schema';
 import { Unit, type UnitType } from '../../src/modules/units/entities/unit.entity';
 import { createUnitRepository } from '../../src/modules/units/repositories/unit.repository';
 import { units } from '../../src/modules/units/schema';
@@ -12,9 +23,12 @@ import type { EmailMessage, EmailSender } from '../../src/shared/email-sender';
 import type { AddressInput } from '../../src/shared/value-objects/address';
 import type { Role } from '../../src/shared/roles';
 import { generateCnpj } from '../fixtures/cnpj';
+import { generateCpf } from '../fixtures/cpf';
 
 const userRepository = createUserRepository(db);
 const unitRepository = createUnitRepository(db);
+const patientRepository = createPatientRepository(db);
+const professionalRepository = createProfessionalRepository(db);
 
 export type InsertUserOptions = {
   email?: string;
@@ -54,6 +68,10 @@ export async function findAuditLogs() {
 }
 
 export async function clearUsers() {
+  await db.delete(lgpdConsents);
+  await db.delete(patients);
+  await db.delete(professionalUnits);
+  await db.delete(professionals);
   await db.delete(passwordResetTokens);
   await db.delete(users);
 }
@@ -119,9 +137,83 @@ export async function insertUnit(options: InsertUnitOptions = {}): Promise<Unit>
 }
 
 export async function clearUnits() {
+  await db.delete(professionalUnits);
   await db.delete(units);
 }
 
 export async function findUnits() {
   return db.select().from(units);
+}
+
+export type InsertPatientOptions = {
+  name?: string;
+  cpf?: string;
+  birthDate?: string;
+  email?: string;
+  active?: boolean;
+};
+
+export async function insertPatient(options: InsertPatientOptions = {}): Promise<{ patient: Patient; user: User }> {
+  const user = await insertUser({ role: 'PATIENT', email: options.email, active: options.active });
+  const patient = Patient.create({
+    userId: user.id,
+    name: options.name ?? 'Maria da Silva',
+    cpf: options.cpf ?? generateCpf(),
+    birthDate: options.birthDate ?? '1990-04-12',
+    phone: '83999990000',
+    address: addressInput(),
+    acceptTerms: true,
+    termsVersion: '2026-10',
+  });
+  await patientRepository.insert(patient);
+  return { patient, user };
+}
+
+export async function findPatients() {
+  return db.select().from(patients);
+}
+
+export async function findConsents() {
+  return db.select().from(lgpdConsents);
+}
+
+export type InsertProfessionalOptions = {
+  name?: string;
+  email?: string;
+  category?: ProfessionalCategory;
+  registration?: Partial<CouncilRegistrationInput>;
+  specialty?: string | null;
+  unitIds: string[];
+  active?: boolean;
+};
+
+let registrationCounter = 0;
+
+export async function insertProfessional(options: InsertProfessionalOptions): Promise<{ professional: Professional; user: User }> {
+  const category = options.category ?? 'PHYSICIAN';
+  registrationCounter += 1;
+  const user = await insertUser({ role: 'PROFESSIONAL', email: options.email, active: options.active });
+  const professional = Professional.create({
+    userId: user.id,
+    name: options.name ?? 'Dra. Ana Lima',
+    category,
+    registration: {
+      council: category === 'PHYSICIAN' ? 'CRM' : 'COREN',
+      number: `${90000 + registrationCounter}`,
+      state: 'SP',
+      ...options.registration,
+    },
+    specialty: options.specialty,
+    unitIds: options.unitIds,
+  });
+  await professionalRepository.insert(professional);
+  return { professional, user };
+}
+
+export async function findProfessionals() {
+  return db.select().from(professionals);
+}
+
+export async function findProfessionalUnits() {
+  return db.select().from(professionalUnits);
 }

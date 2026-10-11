@@ -119,8 +119,16 @@ export class User {
     this.props.passwordChangedAt = at;
   }
 
+  changeEmail(rawEmail: string): void {
+    this.props.email = Email.create(rawEmail).value;
+  }
+
   deactivate(): void {
     this.props.active = false;
+  }
+
+  activate(): void {
+    this.props.active = true;
   }
 
   wasTokenIssuedBeforePasswordChange(issuedAt: Date): boolean {

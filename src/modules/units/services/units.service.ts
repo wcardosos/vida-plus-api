@@ -111,5 +111,9 @@ export function createUnitsService(deps: { db: Database; units: UnitRepository }
     return units.existsById(id);
   }
 
-  return { registerDeactivationCheck, create, list, getById, update, deactivate, getActiveById, assertLaboratory, existsById };
+  async function listByIds(ids: string[]): Promise<Unit[]> {
+    return units.findByIds([...new Set(ids)]);
+  }
+
+  return { registerDeactivationCheck, create, list, getById, update, deactivate, getActiveById, assertLaboratory, existsById, listByIds };
 }

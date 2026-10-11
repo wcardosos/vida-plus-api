@@ -22,6 +22,13 @@
       "when": 1791730612768,
       "tag": "0002_create_units_table",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791734024518,
+      "tag": "0003_create_patients_professionals_and_consents",
+      "breakpoints": true
     }
   ]
 }

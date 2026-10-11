@@ -3,6 +3,9 @@ import type { Database } from './db/client';
 import { env } from './env';
 import { createAuditModule } from './modules/audit/audit.module';
 import { createAuthModule } from './modules/auth/auth.module';
+import { createLgpdModule } from './modules/lgpd/lgpd.module';
+import { createPatientsModule } from './modules/patients/patients.module';
+import { createProfessionalsModule } from './modules/professionals/professionals.module';
 import { createUnitsModule } from './modules/units/units.module';
 import { createConsoleEmailSender, type EmailSender } from './shared/email-sender';
 
@@ -21,13 +24,29 @@ export function createContainer(deps: ContainerDeps) {
     db,
     logger,
     emailSender,
-    config: { appUrl: env.APP_URL, resetTokenTtlMs: env.RESET_TOKEN_TTL },
+    config: { appUrl: env.APP_URL, resetTokenTtlMs: env.RESET_TOKEN_TTL, setupTokenTtlMs: env.PASSWORD_SETUP_TOKEN_TTL },
   });
   const units = createUnitsModule({ db });
+  const lgpd = createLgpdModule({ db });
+  const patients = createPatientsModule({
+    db,
+    auth: auth.service,
+    audit: audit.service,
+    lgpd: lgpd.service,
+    config: { termsVersion: env.TERMS_VERSION },
+  });
+  const professionals = createProfessionalsModule({ db, auth: auth.service, units: units.service });
 
   return {
-    services: { audit: audit.service, auth: auth.service, units: units.service },
-    routes: [audit.routes, auth.routes, units.routes] satisfies FastifyPluginAsync[],
+    services: {
+      audit: audit.service,
+      auth: auth.service,
+      units: units.service,
+      lgpd: lgpd.service,
+      patients: patients.service,
+      professionals: professionals.service,
+    },
+    routes: [audit.routes, auth.routes, units.routes, patients.routes, professionals.routes] satisfies FastifyPluginAsync[],
   };
 }
 

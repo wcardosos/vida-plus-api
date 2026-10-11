@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, type SQL } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, inArray, type SQL } from 'drizzle-orm';
 import type { Database, DbExecutor, Transaction } from '../../../db/client';
 import { Address, type BrazilianState } from '../../../shared/value-objects/address';
 import { Cnpj, Unit, type UnitType } from '../entities/unit.entity';
@@ -92,6 +92,14 @@ export function createUnitRepository(db: Database) {
     async findByIdForShare(id: string, executor: Transaction): Promise<Unit | null> {
       const [row] = await executor.select().from(units).where(eq(units.id, id)).for('share');
       return row ? toEntity(row) : null;
+    },
+
+    async findByIds(ids: string[]): Promise<Unit[]> {
+      if (ids.length === 0) {
+        return [];
+      }
+      const rows = await db.select().from(units).where(inArray(units.id, ids)).orderBy(asc(units.name), asc(units.id));
+      return rows.map(toEntity);
     },
 
     async existsById(id: string): Promise<boolean> {

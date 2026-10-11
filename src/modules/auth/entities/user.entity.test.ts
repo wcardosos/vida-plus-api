@@ -171,6 +171,41 @@ describe('User.deactivate', () => {
   });
 });
 
+describe('User.activate', () => {
+  it('lets an inactive account authenticate again', () => {
+    const user = User.restore(storedProps({ active: false }));
+
+    user.activate();
+
+    expect(user.active).toBe(true);
+    expect(user.canAuthenticate()).toBe(true);
+  });
+
+  it('is idempotent', () => {
+    const user = User.restore(storedProps());
+
+    expect(() => user.activate()).not.toThrow();
+    expect(user.active).toBe(true);
+  });
+});
+
+describe('User.changeEmail', () => {
+  it('stores the normalized email', () => {
+    const user = User.restore(storedProps());
+
+    user.changeEmail(' Nova@VidaPlus.com ');
+
+    expect(user.email).toBe('nova@vidaplus.com');
+  });
+
+  it('rejects an invalid email and keeps the current one', () => {
+    const user = User.restore(storedProps());
+
+    expect(() => user.changeEmail('sem-arroba')).toThrow(new DomainError('email must be a valid email address'));
+    expect(user.email).toBe('maria@vidaplus.com');
+  });
+});
+
 describe('User.canAuthenticate', () => {
   it('is true for an active account', () => {
     expect(User.restore(storedProps()).canAuthenticate()).toBe(true);

@@ -54,7 +54,7 @@ export type AddressInput = {
 
 const zipCodePattern = /^(\d{5})-?(\d{3})$/;
 
-function isBrazilianState(value: string): value is BrazilianState {
+export function isBrazilianState(value: string): value is BrazilianState {
   return (brazilianStates as readonly string[]).includes(value);
 }
 

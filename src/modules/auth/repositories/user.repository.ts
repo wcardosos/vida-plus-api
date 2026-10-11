@@ -40,6 +40,7 @@ export function createUserRepository(db: Database) {
       await executor
         .update(users)
         .set({
+          email: user.email,
           passwordHash: user.passwordHash,
           active: user.active,
           lastLoginAt: user.lastLoginAt,

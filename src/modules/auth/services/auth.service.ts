@@ -13,7 +13,7 @@ import { hashPassword, verifyPassword } from './password';
 
 export type CreateUserInput = {
   email: string;
-  password: string;
+  password?: string;
   role: Role;
 };
 
@@ -30,6 +30,7 @@ export type AuthenticatedUser = {
 export type AuthServiceConfig = {
   appUrl: string;
   resetTokenTtlMs: number;
+  setupTokenTtlMs: number;
 };
 
 export type AuthService = ReturnType<typeof createAuthService>;
@@ -55,7 +56,8 @@ export function createAuthService(deps: {
     if (await users.findByEmail(email, tx)) {
       throw new ConflictError('Email is already in use');
     }
-    const user = User.create({ email, passwordHash: await hashPassword(input.password), role: input.role });
+    const password = input.password ?? randomBytes(32).toString('base64url');
+    const user = User.create({ email, passwordHash: await hashPassword(password), role: input.role });
     await users.insert(user, tx);
     return user;
   }
@@ -81,12 +83,89 @@ export function createAuthService(deps: {
     return { id: user.id, role: user.role };
   }
 
-  async function getUser(userId: string): Promise<User> {
-    const user = await users.findById(userId);
+  async function getUser(userId: string, tx?: Transaction): Promise<User> {
+    const user = await users.findById(userId, tx);
     if (!user) {
       throw new NotFoundError('User not found');
     }
     return user;
+  }
+
+  async function loadForUpdate(userId: string, tx: Transaction): Promise<User> {
+    const user = await users.findByIdForUpdate(userId, tx);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    return user;
+  }
+
+  function inTransaction<T>(tx: Transaction | undefined, work: (tx: Transaction) => Promise<T>): Promise<T> {
+    return tx ? work(tx) : db.transaction(work);
+  }
+
+  async function updateEmail(userId: string, rawEmail: string, tx?: Transaction): Promise<User> {
+    return inTransaction(tx, async (tx) => {
+      const user = await loadForUpdate(userId, tx);
+      const email = Email.create(rawEmail).value;
+      if (email === user.email) {
+        return user;
+      }
+      if (await users.findByEmail(email, tx)) {
+        throw new ConflictError('Email is already in use');
+      }
+
+      user.changeEmail(email);
+      await users.update(user, tx);
+      await resetTokens.invalidatePendingForUser(user.id, new Date(), tx);
+      return user;
+    });
+  }
+
+  async function deactivate(userId: string, tx?: Transaction): Promise<boolean> {
+    return inTransaction(tx, async (tx) => {
+      const user = await loadForUpdate(userId, tx);
+      if (!user.active) {
+        return false;
+      }
+      user.deactivate();
+      await users.update(user, tx);
+      return true;
+    });
+  }
+
+  async function activate(userId: string, tx?: Transaction): Promise<boolean> {
+    return inTransaction(tx, async (tx) => {
+      const user = await loadForUpdate(userId, tx);
+      if (user.active) {
+        return false;
+      }
+      user.activate();
+      await users.update(user, tx);
+      return true;
+    });
+  }
+
+  async function issueToken(user: User, ttlMs: number): Promise<string> {
+    const now = new Date();
+    const rawToken = randomBytes(32).toString('base64url');
+    const token = PasswordResetToken.issue(user.id, sha256(rawToken), now, ttlMs);
+    await db.transaction(async (tx) => {
+      await resetTokens.invalidatePendingForUser(user.id, now, tx);
+      await resetTokens.insert(token, tx);
+    });
+    return rawToken;
+  }
+
+  function passwordLink(rawToken: string): string {
+    const link = new URL('/reset-password', config.appUrl);
+    link.searchParams.set('token', rawToken);
+    return link.toString();
+  }
+
+  function sendEmail(user: User, subject: string, text: string, failureMessage: string): void {
+    emailSender.send({ to: user.email, subject, text }).catch((error: unknown) => {
+      logger.error({ err: loggableError(error), userId: user.id }, failureMessage);
+    });
   }
 
   async function requestPasswordReset(rawEmail: string): Promise<void> {
@@ -95,27 +174,30 @@ export function createAuthService(deps: {
       return;
     }
 
-    const now = new Date();
-    const rawToken = randomBytes(32).toString('base64url');
-    const token = PasswordResetToken.issue(user.id, sha256(rawToken), now, config.resetTokenTtlMs);
-    await db.transaction(async (tx) => {
-      await resetTokens.invalidatePendingForUser(user.id, now, tx);
-      await resetTokens.insert(token, tx);
-    });
-
-    const link = new URL('/reset-password', config.appUrl);
-    link.searchParams.set('token', rawToken);
+    const rawToken = await issueToken(user, config.resetTokenTtlMs);
     const validMinutes = Math.round(config.resetTokenTtlMs / 60_000);
+    sendEmail(
+      user,
+      'Vida Plus password reset',
+      `A password reset was requested for your Vida Plus account. Open ${passwordLink(rawToken)} within ${validMinutes} minutes to choose a new password. If you did not request it, ignore this email.`,
+      'failed to send password reset email',
+    );
+  }
 
-    emailSender
-      .send({
-        to: user.email,
-        subject: 'Vida Plus password reset',
-        text: `A password reset was requested for your Vida Plus account. Open ${link.toString()} within ${validMinutes} minutes to choose a new password. If you did not request it, ignore this email.`,
-      })
-      .catch((error: unknown) => {
-        logger.error({ err: loggableError(error), userId: user.id }, 'failed to send password reset email');
-      });
+  async function issuePasswordSetup(userId: string): Promise<void> {
+    try {
+      const user = await getUser(userId);
+      const rawToken = await issueToken(user, config.setupTokenTtlMs);
+      const validHours = Math.round(config.setupTokenTtlMs / 3_600_000);
+      sendEmail(
+        user,
+        'Welcome to Vida Plus: set your password',
+        `An account was created for you at Vida Plus. Open ${passwordLink(rawToken)} within ${validHours} hours to choose your password. After that, use the forgot password option to receive a new link.`,
+        'failed to send password setup email',
+      );
+    } catch (error) {
+      logger.error({ err: loggableError(error), userId }, 'failed to issue password setup token');
+    }
   }
 
   async function resetPassword(input: { token: string; password: string }): Promise<void> {
@@ -149,5 +231,17 @@ export function createAuthService(deps: {
     return { user: await createUser({ ...input, role: 'ADMIN' }), created: true };
   }
 
-  return { createUser, login, findAuthenticatedUser, getUser, requestPasswordReset, resetPassword, ensureAdmin };
+  return {
+    createUser,
+    login,
+    findAuthenticatedUser,
+    getUser,
+    updateEmail,
+    deactivate,
+    activate,
+    requestPasswordReset,
+    issuePasswordSetup,
+    resetPassword,
+    ensureAdmin,
+  };
 }
