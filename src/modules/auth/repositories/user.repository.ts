@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
-import type { Database, DbExecutor } from '../../db/client';
-import { User } from './user.entity';
-import { users } from './schema';
+import type { Database, DbExecutor } from '../../../db/client';
+import { User } from '../entities/user.entity';
+import { users } from '../schema';
 
 type UserRow = typeof users.$inferSelect;
 

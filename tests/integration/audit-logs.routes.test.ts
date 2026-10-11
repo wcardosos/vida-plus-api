@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app';
 import { db, pool } from '../../src/db/client';
-import { AuditLog, type AuditLogProps } from '../../src/modules/audit/audit.entity';
-import { createAuditRepository } from '../../src/modules/audit/audit.repository';
+import { AuditLog, type AuditLogProps } from '../../src/modules/audit/entities/audit.entity';
+import { createAuditRepository } from '../../src/modules/audit/repositories/audit.repository';
 import { clearAuditLogs, clearUsers, findAuditLogs, tokenFor } from './helpers';
 
 const app = buildApp();

@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { authenticate, requireRole } from '../../plugins/auth';
 import { errorResponseSchema } from '../../shared/error-response';
 import { auditLogPageResponseSchema, listAuditLogsQuerySchema, toAuditLogResponse } from './audit.schemas';
-import type { AuditService } from './audit.service';
+import type { AuditService } from './services/audit.service';
 
 export function auditRoutes(auditService: AuditService): FastifyPluginAsync {
   return async (instance) => {

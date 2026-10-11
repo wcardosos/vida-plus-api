@@ -3,8 +3,8 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createContainer } from '../../src/container';
 import { db, pool } from '../../src/db/client';
-import { User } from '../../src/modules/auth/user.entity';
-import { createUserRepository } from '../../src/modules/auth/user.repository';
+import { User } from '../../src/modules/auth/entities/user.entity';
+import { createUserRepository } from '../../src/modules/auth/repositories/user.repository';
 import { ConflictError } from '../../src/shared/errors';
 import { captureEmails, clearUsers, findUsers } from './helpers';
 

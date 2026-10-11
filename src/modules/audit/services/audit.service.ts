@@ -1,9 +1,9 @@
 import type { FastifyBaseLogger } from 'fastify';
-import type { Transaction } from '../../db/client';
-import type { RequestContext } from '../../shared/request-context';
-import { loggableError } from '../../shared/logger';
-import { AuditLog, type AuditAction, type AuditResourceType } from './audit.entity';
-import type { AuditLogFilters, AuditRepository, Pagination } from './audit.repository';
+import type { Transaction } from '../../../db/client';
+import type { RequestContext } from '../../../shared/request-context';
+import { loggableError } from '../../../shared/logger';
+import { AuditLog, type AuditAction, type AuditResourceType } from '../entities/audit.entity';
+import type { AuditLogFilters, AuditRepository, Pagination } from '../repositories/audit.repository';
 
 export type RecordAuditInput = {
   action: AuditAction;

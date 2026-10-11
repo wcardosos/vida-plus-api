@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import type { Database, DbExecutor } from '../../db/client';
-import { PasswordResetToken } from './password-reset-token.entity';
-import { passwordResetTokens } from './schema';
+import type { Database, DbExecutor } from '../../../db/client';
+import { PasswordResetToken } from '../entities/password-reset-token.entity';
+import { passwordResetTokens } from '../schema';
 
 type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
 

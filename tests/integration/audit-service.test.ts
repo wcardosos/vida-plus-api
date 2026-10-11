@@ -5,8 +5,8 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, expectTypeOf, it } from 'vitest';
 import { db, pool } from '../../src/db/client';
 import * as schema from '../../src/db/schema';
-import { createAuditRepository } from '../../src/modules/audit/audit.repository';
-import { createAuditService } from '../../src/modules/audit/audit.service';
+import { createAuditRepository } from '../../src/modules/audit/repositories/audit.repository';
+import { createAuditService } from '../../src/modules/audit/services/audit.service';
 import type { RequestContext } from '../../src/shared/request-context';
 import { clearAuditLogs, findAuditLogs } from './helpers';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DomainError } from '../../shared/errors';
-import { PasswordResetToken, type PasswordResetTokenProps } from './password-reset-token.entity';
+import { DomainError } from '../../../shared/errors';
+import { PasswordResetToken, type PasswordResetTokenProps } from '../entities/password-reset-token.entity';
 
 const now = new Date('2026-10-11T12:00:00.000Z');
 const thirtyMinutes = 30 * 60_000;

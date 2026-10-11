@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { DomainError } from '../../shared/errors';
-import { AuditLog, type AuditLogProps, type RecordAuditLogProps } from './audit.entity';
+import { DomainError } from '../../../shared/errors';
+import { AuditLog, type AuditLogProps, type RecordAuditLogProps } from '../entities/audit.entity';
 
 const now = new Date('2026-03-10T14:30:00.000Z');
 

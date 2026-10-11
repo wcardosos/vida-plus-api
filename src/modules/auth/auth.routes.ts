@@ -12,7 +12,7 @@ import {
   toUserResponse,
   userResponseSchema,
 } from './auth.schemas';
-import type { AuthService } from './auth.service';
+import type { AuthService } from './services/auth.service';
 
 const authRateLimit = { max: env.AUTH_RATE_LIMIT_MAX, timeWindow: env.AUTH_RATE_LIMIT_WINDOW };
 

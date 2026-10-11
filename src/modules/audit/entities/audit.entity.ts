@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
-import { DomainError } from '../../shared/errors';
+import { DomainError } from '../../../shared/errors';
 
 export const auditActions = ['READ', 'CREATE', 'UPDATE', 'CORRECT', 'EXPORT', 'ACCESS_DENIED'] as const;
 export type AuditAction = (typeof auditActions)[number];

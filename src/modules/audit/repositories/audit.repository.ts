@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gte, lte, type SQL } from 'drizzle-orm';
-import type { Database, DbExecutor } from '../../db/client';
-import { AuditLog, type AuditAction } from './audit.entity';
-import { auditLogs } from './schema';
+import type { Database, DbExecutor } from '../../../db/client';
+import { AuditLog, type AuditAction } from '../entities/audit.entity';
+import { auditLogs } from '../schema';
 
 export type AuditLogFilters = {
   userId?: string;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { roles } from '../../shared/roles';
-import { Email, type User } from './user.entity';
+import { Email, type User } from './entities/user.entity';
 
 export const roleSchema = z.enum(roles).meta({ id: 'Role' });
 

@@ -1,15 +1,15 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
-import type { Database, Transaction } from '../../db/client';
-import type { EmailSender } from '../../shared/email-sender';
-import { ConflictError, DomainError, NotFoundError, UnauthorizedError } from '../../shared/errors';
-import { loggableError } from '../../shared/logger';
-import type { Role } from '../../shared/roles';
+import type { Database, Transaction } from '../../../db/client';
+import type { EmailSender } from '../../../shared/email-sender';
+import { ConflictError, DomainError, NotFoundError, UnauthorizedError } from '../../../shared/errors';
+import { loggableError } from '../../../shared/logger';
+import type { Role } from '../../../shared/roles';
+import { PasswordResetToken } from '../entities/password-reset-token.entity';
+import { Email, User } from '../entities/user.entity';
+import type { PasswordResetTokenRepository } from '../repositories/password-reset-token.repository';
+import type { UserRepository } from '../repositories/user.repository';
 import { hashPassword, verifyPassword } from './password';
-import { PasswordResetToken } from './password-reset-token.entity';
-import type { PasswordResetTokenRepository } from './password-reset-token.repository';
-import { Email, User } from './user.entity';
-import type { UserRepository } from './user.repository';
 
 export type CreateUserInput = {
   email: string;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auditActions, auditResourceTypes, type AuditLog } from './audit.entity';
+import { auditActions, auditResourceTypes, type AuditLog } from './entities/audit.entity';
 
 export const auditActionSchema = z.enum(auditActions).meta({ id: 'AuditAction' });
 

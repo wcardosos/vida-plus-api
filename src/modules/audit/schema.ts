@@ -1,5 +1,5 @@
 import { index, inet, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { auditActions, auditResourceTypes } from './audit.entity';
+import { auditActions, auditResourceTypes } from './entities/audit.entity';
 
 export const auditActionEnum = pgEnum('audit_action', auditActions);
 

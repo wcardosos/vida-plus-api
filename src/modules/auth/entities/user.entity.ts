@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { DomainError } from '../../shared/errors';
-import { roles, type Role } from '../../shared/roles';
+import { DomainError } from '../../../shared/errors';
+import { roles, type Role } from '../../../shared/roles';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

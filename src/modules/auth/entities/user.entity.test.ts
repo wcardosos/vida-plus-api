@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DomainError } from '../../shared/errors';
-import type { Role } from '../../shared/roles';
-import { Email, User, type CreateUserProps, type UserProps } from './user.entity';
+import { DomainError } from '../../../shared/errors';
+import type { Role } from '../../../shared/roles';
+import { Email, User, type CreateUserProps, type UserProps } from '../entities/user.entity';
 
 const now = new Date('2026-10-11T12:00:00.000Z');
 

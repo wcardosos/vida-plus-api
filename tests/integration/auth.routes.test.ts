@@ -4,11 +4,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app';
 import { db, pool } from '../../src/db/client';
 import { env } from '../../src/env';
-import { PasswordResetToken } from '../../src/modules/auth/password-reset-token.entity';
-import { createPasswordResetTokenRepository } from '../../src/modules/auth/password-reset-token.repository';
-import { hashPassword } from '../../src/modules/auth/password';
+import { PasswordResetToken } from '../../src/modules/auth/entities/password-reset-token.entity';
+import type { User } from '../../src/modules/auth/entities/user.entity';
+import { createPasswordResetTokenRepository } from '../../src/modules/auth/repositories/password-reset-token.repository';
 import { passwordResetTokens, users } from '../../src/modules/auth/schema';
-import type { User } from '../../src/modules/auth/user.entity';
+import { hashPassword } from '../../src/modules/auth/services/password';
 import {
   captureEmails,
   clearUsers,

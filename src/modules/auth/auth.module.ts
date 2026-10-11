@@ -2,9 +2,9 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Database } from '../../db/client';
 import type { EmailSender } from '../../shared/email-sender';
 import { authRoutes } from './auth.routes';
-import { createAuthService, type AuthServiceConfig } from './auth.service';
-import { createPasswordResetTokenRepository } from './password-reset-token.repository';
-import { createUserRepository } from './user.repository';
+import { createPasswordResetTokenRepository } from './repositories/password-reset-token.repository';
+import { createUserRepository } from './repositories/user.repository';
+import { createAuthService, type AuthServiceConfig } from './services/auth.service';
 
 export function createAuthModule(deps: { db: Database; logger: FastifyBaseLogger; emailSender: EmailSender; config: AuthServiceConfig }) {
   const service = createAuthService({

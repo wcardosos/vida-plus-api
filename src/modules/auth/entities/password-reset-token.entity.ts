@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { DomainError } from '../../shared/errors';
+import { DomainError } from '../../../shared/errors';
 
 export type PasswordResetTokenProps = {
   id: string;
