@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import type { Database } from './db/client';
 import { env } from './env';
+import { createAdmissionsModule } from './modules/admissions/admissions.module';
 import { createAuditModule } from './modules/audit/audit.module';
 import { createAuthModule } from './modules/auth/auth.module';
 import { createLgpdModule } from './modules/lgpd/lgpd.module';
@@ -52,12 +53,21 @@ export function createContainer(deps: ContainerDeps) {
     clock: deps.clock,
     config: { timeZone: env.APP_TIMEZONE, termsVersion: env.TERMS_VERSION },
   });
+  const admissions = createAdmissionsModule({
+    db,
+    audit: audit.service,
+    units: units.service,
+    patients: patients.service,
+    professionals: professionals.service,
+    clock: deps.clock,
+  });
   const medicalRecords = createMedicalRecordsModule({
     db,
     audit: audit.service,
     patients: patients.service,
     professionals: professionals.service,
     scheduling: scheduling.service,
+    admissions: admissions.service,
     clock: deps.clock,
     config: { timeZone: env.APP_TIMEZONE, clinicalDataKey: env.CLINICAL_DATA_KEY },
   });
@@ -71,6 +81,7 @@ export function createContainer(deps: ContainerDeps) {
       patients: patients.service,
       professionals: professionals.service,
       scheduling: scheduling.service,
+      admissions: admissions.service,
       medicalRecords: medicalRecords.service,
     },
     routes: [
@@ -80,6 +91,7 @@ export function createContainer(deps: ContainerDeps) {
       patients.routes,
       professionals.routes,
       scheduling.routes,
+      admissions.routes,
       medicalRecords.routes,
     ] satisfies FastifyPluginAsync[],
   };

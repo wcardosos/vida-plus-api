@@ -50,6 +50,20 @@
       "when": 1791816737860,
       "tag": "0006_create_medical_records_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791818430321,
+      "tag": "0007_create_admissions_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791818446628,
+      "tag": "0008_add_medical_record_entries_admission_fk",
+      "breakpoints": true
     }
   ]
 }

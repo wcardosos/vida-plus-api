@@ -60,7 +60,7 @@ export const unitDeactivationErrorSchema = errorResponseSchema
     pendencies: z
       .array(
         z.object({
-          type: z.string().describe('e.g. FUTURE_APPOINTMENTS'),
+          type: z.string().describe('e.g. FUTURE_APPOINTMENTS, ACTIVE_ADMISSIONS'),
           count: z.number().int(),
           appointments: z
             .array(z.object({ id: z.uuid(), startsAt: z.iso.datetime() }))

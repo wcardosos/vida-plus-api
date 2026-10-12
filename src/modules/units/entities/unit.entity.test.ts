@@ -218,3 +218,13 @@ describe('Unit.isLaboratory', () => {
     expect(Unit.restore(storedProps({ type })).isLaboratory()).toBe(false);
   });
 });
+
+describe('Unit.isHospital', () => {
+  it('is true for a hospital', () => {
+    expect(Unit.restore(storedProps({ type: 'HOSPITAL' })).isHospital()).toBe(true);
+  });
+
+  it.each(['CLINIC', 'LABORATORY', 'HOME_CARE'] as const)('is false for %s', (type) => {
+    expect(Unit.restore(storedProps({ type })).isHospital()).toBe(false);
+  });
+});

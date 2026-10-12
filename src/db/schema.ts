@@ -1,3 +1,4 @@
+export * from '../modules/admissions/schema';
 export * from '../modules/audit/schema';
 export * from '../modules/auth/schema';
 export * from '../modules/lgpd/schema';

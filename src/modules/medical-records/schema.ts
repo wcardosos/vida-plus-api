@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, date, foreignKey, index, pgTable, smallint, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
+import { admissions } from '../admissions/schema';
 import { patients } from '../patients/schema';
 import { professionals } from '../professionals/schema';
 import { appointments } from '../scheduling/schema';
@@ -15,7 +16,7 @@ export const medicalRecordEntries = pgTable(
       .notNull()
       .references(() => professionals.id),
     appointmentId: uuid('appointment_id').references(() => appointments.id),
-    admissionId: uuid('admission_id'),
+    admissionId: uuid('admission_id').references(() => admissions.id),
     previousEntryId: uuid('previous_entry_id'),
     anamnesis: text('anamnesis').notNull(),
     icdCode: text('icd_code').notNull(),
@@ -33,6 +34,7 @@ export const medicalRecordEntries = pgTable(
     uniqueIndex('medical_record_entries_previous_entry_id_unique_idx').on(table.previousEntryId),
     index('medical_record_entries_patient_created_at_idx').on(table.patientId, table.createdAt.desc().nullsFirst()),
     index('medical_record_entries_appointment_id_idx').on(table.appointmentId),
+    index('medical_record_entries_admission_id_idx').on(table.admissionId),
     check('medical_record_entries_single_origin_check', sql`num_nonnulls(${table.appointmentId}, ${table.admissionId}) = 1`),
     check('medical_record_entries_correction_reason_check', sql`(${table.previousEntryId} IS NULL) = (${table.correctionReason} IS NULL)`),
   ],

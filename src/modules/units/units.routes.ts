@@ -111,7 +111,7 @@ export function unitsRoutes(unitsService: UnitsService): FastifyPluginAsync {
         preHandler: requireRole('ADMIN'),
         schema: {
           tags: ['units'],
-          summary: 'Deactivate a unit; fails while it has pendencies such as future appointments',
+          summary: 'Deactivate a unit; fails while it has pendencies such as future appointments or active admissions',
           security: [{ bearerAuth: [] }],
           params: unitParamsSchema,
           response: {

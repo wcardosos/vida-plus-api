@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { db } from '../../src/db/client';
+import { admissionMovements, admissions, beds } from '../../src/modules/admissions/schema';
 import { auditLogs } from '../../src/modules/audit/schema';
 import { User } from '../../src/modules/auth/entities/user.entity';
 import { createUserRepository } from '../../src/modules/auth/repositories/user.repository';
@@ -84,8 +85,15 @@ export async function clearMedicalRecords() {
   await db.delete(medicalRecordEntries);
 }
 
-export async function clearSchedules() {
+export async function clearAdmissions() {
   await clearMedicalRecords();
+  await db.delete(admissionMovements);
+  await db.delete(admissions);
+  await db.delete(beds);
+}
+
+export async function clearSchedules() {
+  await clearAdmissions();
   await db.delete(appointments);
   await db.delete(scheduleBlocks);
   await db.delete(scheduleAvailabilities);

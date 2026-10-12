@@ -153,6 +153,10 @@ export class Unit {
     return this.props.type === 'LABORATORY';
   }
 
+  isHospital(): boolean {
+    return this.props.type === 'HOSPITAL';
+  }
+
   isActive(): boolean {
     return this.props.active;
   }

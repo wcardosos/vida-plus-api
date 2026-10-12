@@ -1,8 +1,9 @@
-import type { Database } from '../../../db/client';
+import type { Database, Transaction } from '../../../db/client';
 import { ConflictError, ForbiddenError, NotFoundError } from '../../../shared/errors';
 import type { RequestContext } from '../../../shared/request-context';
 import type { Role } from '../../../shared/roles';
 import { addDays, startOfZonedDay } from '../../../shared/time-zone';
+import type { AdmissionDetails, AdmissionsService } from '../../admissions/services/admissions.service';
 import type { AccessDeniedResource, AuditService } from '../../audit/services/audit.service';
 import type { Patient } from '../../patients/entities/patient.entity';
 import type { PatientsService } from '../../patients/services/patients.service';
@@ -41,7 +42,7 @@ export type CorrectEntryInput = ClinicalContent & {
   correctionReason: string;
 };
 
-export const historySections = ['appointment', 'entry', 'prescription'] as const;
+export const historySections = ['appointment', 'entry', 'prescription', 'admission'] as const;
 
 export type HistorySection = (typeof historySections)[number];
 
@@ -70,6 +71,7 @@ export type MedicalHistory = {
   appointments: AppointmentDetails[];
   entries: (EntryDetails & { versionCount: number })[];
   prescriptions: PrescriptionDetails[];
+  admissions: AdmissionDetails[];
 };
 
 export type MedicalRecordsService = ReturnType<typeof createMedicalRecordsService>;
@@ -82,10 +84,11 @@ export function createMedicalRecordsService(deps: {
   patients: PatientsService;
   professionals: ProfessionalsService;
   scheduling: SchedulingService;
+  admissions: AdmissionsService;
   clock: () => Date;
   config: MedicalRecordsServiceConfig;
 }) {
-  const { db, entries, prescriptions, audit, patients, professionals, scheduling, clock, config } = deps;
+  const { db, entries, prescriptions, audit, patients, professionals, scheduling, admissions, clock, config } = deps;
   const { timeZone } = config;
 
   async function currentProfessional(userId: string): Promise<Professional> {
@@ -95,6 +98,10 @@ export function createMedicalRecordsService(deps: {
   async function denyAccess(ctx: RequestContext, patientId: string, message: string, resource?: AccessDeniedResource): Promise<never> {
     await audit.recordAccessDenied(ctx, patientId, resource);
     throw new ForbiddenError(message);
+  }
+
+  async function attends(professionalId: string, patientId: string): Promise<boolean> {
+    return (await scheduling.hasLinkWithPatient(professionalId, patientId)) || (await admissions.hasLinkWithPatient(professionalId, patientId));
   }
 
   async function ensureCanRead(reader: Reader, patientId: string, resource: AccessDeniedResource): Promise<void> {
@@ -107,7 +114,7 @@ export function createMedicalRecordsService(deps: {
     }
     if (reader.role === 'PROFESSIONAL') {
       const professional = await currentProfessional(reader.userId);
-      if (!(await scheduling.hasLinkWithPatient(professional.id, patientId))) {
+      if (!(await attends(professional.id, patientId))) {
         await denyAccess(reader, patientId, 'Professional does not attend this patient', resource);
       }
       return;
@@ -131,29 +138,26 @@ export function createMedicalRecordsService(deps: {
     return list.map((prescription) => ({ prescription, prescriber: reference(prescription.prescriberId) }));
   }
 
-  async function createEntry(ctx: RequestContext, appointmentId: string, input: CreateEntryInput): Promise<CreatedEntry> {
-    const now = clock();
-    const author = await currentProfessional(ctx.userId);
-    const appointment = await scheduling.findAppointmentForRecord(appointmentId);
-    if (appointment.professionalId !== author.id) {
-      await denyAccess(ctx, appointment.patientId, 'Only the professional of the appointment can record it');
-    }
-    const prescriptionInputs = input.prescriptions ?? [];
-    if (prescriptionInputs.length > 0 && !author.canPrescribe()) {
+  function ensureCanIssuePrescriptions(author: Professional, input: CreateEntryInput): void {
+    if ((input.prescriptions ?? []).length > 0 && !author.canPrescribe()) {
       throw new ForbiddenError('Only physicians can issue prescriptions');
     }
+  }
 
-    const entry = MedicalRecordEntry.create({ ...input, patientId: appointment.patientId, professionalId: author.id, appointmentId }, now);
-    const issued = prescriptionInputs.map((prescription) =>
+  async function saveEntry(
+    ctx: RequestContext,
+    author: Professional,
+    entry: MedicalRecordEntry,
+    input: CreateEntryInput,
+    now: Date,
+    prepareOrigin: (tx: Transaction) => Promise<void>,
+  ): Promise<CreatedEntry> {
+    const issued = (input.prescriptions ?? []).map((prescription) =>
       Prescription.issue({ ...prescription, medicalRecordEntryId: entry.id, patientId: entry.patientId, prescriber: author }, now, timeZone),
     );
 
     await db.transaction(async (tx) => {
-      const current = await scheduling.findAppointmentForRecord(appointmentId, tx);
-      current.ensureAcceptsMedicalRecord(now);
-      if (current.completesOnMedicalRecord()) {
-        await scheduling.completeAppointment(current.id, tx);
-      }
+      await prepareOrigin(tx);
       await entries.insert(entry, tx);
       await audit.record(ctx, { action: 'CREATE', resourceType: 'MEDICAL_RECORD_ENTRY', resourceId: entry.id, patientId: entry.patientId }, tx);
       for (const prescription of issued) {
@@ -168,6 +172,43 @@ export function createMedicalRecordsService(deps: {
       professional: reference,
       prescriptions: issued.map((prescription) => ({ prescription, prescriber: reference })),
     };
+  }
+
+  async function createEntry(ctx: RequestContext, appointmentId: string, input: CreateEntryInput): Promise<CreatedEntry> {
+    const now = clock();
+    const author = await currentProfessional(ctx.userId);
+    const appointment = await scheduling.findAppointmentForRecord(appointmentId);
+    if (appointment.professionalId !== author.id) {
+      await denyAccess(ctx, appointment.patientId, 'Only the professional of the appointment can record it');
+    }
+    ensureCanIssuePrescriptions(author, input);
+
+    const entry = MedicalRecordEntry.create({ ...input, patientId: appointment.patientId, professionalId: author.id, appointmentId }, now);
+    return saveEntry(ctx, author, entry, input, now, async (tx) => {
+      const current = await scheduling.findAppointmentForRecord(appointmentId, tx);
+      current.ensureAcceptsMedicalRecord(now);
+      if (current.completesOnMedicalRecord()) {
+        await scheduling.completeAppointment(current.id, tx);
+      }
+    });
+  }
+
+  async function createAdmissionEntry(ctx: RequestContext, admissionId: string, input: CreateEntryInput): Promise<CreatedEntry> {
+    const now = clock();
+    const author = await currentProfessional(ctx.userId);
+    const admission = await admissions.findForRecord(admissionId);
+    if (!admission.isResponsible(author.id)) {
+      await denyAccess(ctx, admission.patientId, 'Only the responsible professional of the admission can record it', {
+        resourceType: 'ADMISSION',
+        resourceId: admission.id,
+      });
+    }
+    ensureCanIssuePrescriptions(author, input);
+
+    const entry = MedicalRecordEntry.create({ ...input, patientId: admission.patientId, professionalId: author.id, admissionId }, now);
+    return saveEntry(ctx, author, entry, input, now, async (tx) => {
+      (await admissions.findForRecord(admissionId, tx)).ensureAcceptsMedicalRecord();
+    });
   }
 
   async function correctEntry(ctx: RequestContext, entryId: string, input: CorrectEntryInput): Promise<EntryDetails> {
@@ -236,10 +277,11 @@ export function createMedicalRecordsService(deps: {
   async function history(ctx: RequestContext, patient: Patient, query: HistoryQuery): Promise<MedicalHistory> {
     const period = periodOf(query);
     const wants = (section: HistorySection) => query.type === undefined || query.type === section;
-    const [appointmentList, currentEntries, prescriptionList] = await Promise.all([
+    const [appointmentList, currentEntries, prescriptionList, admissionList] = await Promise.all([
       wants('appointment') ? scheduling.listByPatient(patient.id, period) : [],
       wants('entry') ? entries.findCurrentByPatient(patient.id, period) : [],
       wants('prescription') ? prescriptions.findByPatient(patient.id, period) : [],
+      wants('admission') ? admissions.listByPatient(patient.id, period) : [],
     ]);
     const reference = await professionalNames([
       ...currentEntries.map(({ entry }) => entry.professionalId),
@@ -252,6 +294,7 @@ export function createMedicalRecordsService(deps: {
       appointments: appointmentList,
       entries: currentEntries.map(({ entry, versionCount }) => ({ entry, versionCount, professional: reference(entry.professionalId) })),
       prescriptions: prescriptionList.map((prescription) => ({ prescription, prescriber: reference(prescription.prescriberId) })),
+      admissions: admissionList,
     };
   }
 
@@ -263,11 +306,11 @@ export function createMedicalRecordsService(deps: {
   async function patientHistory(ctx: RequestContext, patientId: string, query: HistoryQuery): Promise<MedicalHistory> {
     const { patient } = await patients.getById(patientId);
     const professional = await currentProfessional(ctx.userId);
-    if (!(await scheduling.hasLinkWithPatient(professional.id, patient.id))) {
+    if (!(await attends(professional.id, patient.id))) {
       await denyAccess(ctx, patient.id, 'Professional does not attend this patient', { resourceType: 'PATIENT_HISTORY', resourceId: patient.id });
     }
     return history(ctx, patient, query);
   }
 
-  return { createEntry, correctEntry, listVersions, getPrescription, ownHistory, patientHistory };
+  return { createEntry, createAdmissionEntry, correctEntry, listVersions, getPrescription, ownHistory, patientHistory };
 }

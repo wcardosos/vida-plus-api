@@ -1,5 +1,6 @@
 import type { Database } from '../../db/client';
 import { createFieldCipher } from '../../shared/crypto';
+import type { AdmissionsService } from '../admissions/services/admissions.service';
 import type { AuditService } from '../audit/services/audit.service';
 import type { PatientsService } from '../patients/services/patients.service';
 import type { ProfessionalsService } from '../professionals/services/professionals.service';
@@ -15,6 +16,7 @@ export function createMedicalRecordsModule(deps: {
   patients: PatientsService;
   professionals: ProfessionalsService;
   scheduling: SchedulingService;
+  admissions: AdmissionsService;
   clock?: () => Date;
   config: MedicalRecordsServiceConfig & { clinicalDataKey: Buffer };
 }) {
@@ -27,6 +29,7 @@ export function createMedicalRecordsModule(deps: {
     patients: deps.patients,
     professionals: deps.professionals,
     scheduling: deps.scheduling,
+    admissions: deps.admissions,
     clock: deps.clock ?? (() => new Date()),
     config: { timeZone: deps.config.timeZone },
   });

@@ -167,7 +167,7 @@ export function professionalsRoutes(professionalsService: ProfessionalsService):
         schema: {
           tags: ['professionals'],
           summary:
-            'Unlink the professional from a unit; the last unit cannot be unlinked, nor one with future appointments. The availabilities in the unit are removed',
+            'Unlink the professional from a unit; the last unit cannot be unlinked, nor one with future appointments or active admissions under their responsibility. The availabilities in the unit are removed',
           security: [{ bearerAuth: [] }],
           params: professionalUnitParamsSchema,
           response: {
@@ -193,7 +193,7 @@ export function professionalsRoutes(professionalsService: ProfessionalsService):
         preHandler: requireRole('ADMIN'),
         schema: {
           tags: ['professionals'],
-          summary: 'Deactivate the professional account; fails while there are future appointments. The record and unit links are kept',
+          summary: 'Deactivate the professional account; fails while there are future appointments or active admissions under their responsibility. The record and unit links are kept',
           security: [{ bearerAuth: [] }],
           params: professionalParamsSchema,
           response: {

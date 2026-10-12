@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { errorResponseSchema } from '../../shared/error-response';
+import { admissionSummaryResponseSchema, toAdmissionSummaryResponse } from '../admissions/admissions.schemas';
 import { appointmentStatusSchema, modalitySchema } from '../scheduling/scheduling.schemas';
 import type { AppointmentDetails } from '../scheduling/services/scheduling.service';
 import { IcdCode, MedicalRecordEntry } from './entities/medical-record-entry.entity';
@@ -43,6 +44,10 @@ const prescriptionBodySchema = z.object({
 
 export const appointmentRecordParamsSchema = z.object({
   appointmentId: z.uuid(),
+});
+
+export const admissionRecordParamsSchema = z.object({
+  admissionId: z.uuid(),
 });
 
 export const entryParamsSchema = z.object({
@@ -171,7 +176,7 @@ export const medicalHistoryResponseSchema = z
       .describe('Only the current version of each correction chain'),
     prescriptions: z.array(prescriptionResponseSchema),
     exams: z.array(z.never()).describe('Not available yet; always empty'),
-    admissions: z.array(z.never()).describe('Not available yet; always empty'),
+    admissions: z.array(admissionSummaryResponseSchema).describe('Admissions that overlap the period, newest first'),
   })
   .meta({ id: 'MedicalHistory' });
 
@@ -230,6 +235,6 @@ export function toHistoryResponse(history: MedicalHistory): z.infer<typeof medic
     entries: history.entries.map((details) => ({ ...toEntryResponse(details), versionCount: details.versionCount })),
     prescriptions: history.prescriptions.map(toPrescriptionResponse),
     exams: [],
-    admissions: [],
+    admissions: history.admissions.map(toAdmissionSummaryResponse),
   };
 }

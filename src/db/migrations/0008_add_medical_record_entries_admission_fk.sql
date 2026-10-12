@@ -1,0 +1,2 @@
+ALTER TABLE "medical_record_entries" ADD CONSTRAINT "medical_record_entries_admission_id_admissions_id_fk" FOREIGN KEY ("admission_id") REFERENCES "public"."admissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "medical_record_entries_admission_id_idx" ON "medical_record_entries" USING btree ("admission_id");

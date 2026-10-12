@@ -113,6 +113,14 @@ export function createUnitsService(deps: { db: Database; units: UnitRepository }
     return unit;
   }
 
+  async function assertHospital(id: string, tx?: Transaction): Promise<Unit> {
+    const unit = await getActiveById(id, tx);
+    if (!unit.isHospital()) {
+      throw new DomainError('Unit is not a hospital; only hospitals have beds');
+    }
+    return unit;
+  }
+
   async function existsById(id: string): Promise<boolean> {
     return units.existsById(id);
   }
@@ -121,5 +129,5 @@ export function createUnitsService(deps: { db: Database; units: UnitRepository }
     return units.findByIds([...new Set(ids)]);
   }
 
-  return { registerDeactivationCheck, create, list, getById, update, deactivate, getActiveById, assertLaboratory, existsById, listByIds };
+  return { registerDeactivationCheck, create, list, getById, update, deactivate, getActiveById, assertLaboratory, assertHospital, existsById, listByIds };
 }

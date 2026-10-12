@@ -5,6 +5,7 @@ import { authenticate, requireRole } from '../../plugins/auth';
 import { errorResponseSchema } from '../../shared/error-response';
 import type { RequestContext } from '../../shared/request-context';
 import {
+  admissionRecordParamsSchema,
   appointmentRecordParamsSchema,
   correctEntryBodySchema,
   correctionConflictResponseSchema,
@@ -61,6 +62,34 @@ export function medicalRecordsRoutes(medicalRecordsService: MedicalRecordsServic
       },
       async (request, reply) => {
         const created = await medicalRecordsService.createEntry(requestContext(request), request.params.appointmentId, request.body);
+        reply.code(201);
+        return { ...toEntryResponse(created), prescriptions: created.prescriptions.map(toPrescriptionResponse) };
+      },
+    );
+
+    app.post(
+      '/admissions/:admissionId/medical-records',
+      {
+        onRequest: authenticate,
+        preHandler: requireRole('PROFESSIONAL'),
+        schema: {
+          tags,
+          summary: 'Record the care of an active admission the authenticated professional is responsible for, optionally issuing prescriptions',
+          security,
+          params: admissionRecordParamsSchema,
+          body: createEntryBodySchema,
+          response: {
+            201: createEntryResponseSchema,
+            400: errorResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            422: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const created = await medicalRecordsService.createAdmissionEntry(requestContext(request), request.params.admissionId, request.body);
         reply.code(201);
         return { ...toEntryResponse(created), prescriptions: created.prescriptions.map(toPrescriptionResponse) };
       },
