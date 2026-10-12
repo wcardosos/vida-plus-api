@@ -6,6 +6,7 @@ import { User } from '../../src/modules/auth/entities/user.entity';
 import { createUserRepository } from '../../src/modules/auth/repositories/user.repository';
 import { passwordResetTokens, users } from '../../src/modules/auth/schema';
 import { lgpdConsents } from '../../src/modules/lgpd/schema';
+import { medicalRecordEntries, prescriptionItems, prescriptions } from '../../src/modules/medical-records/schema';
 import { Patient } from '../../src/modules/patients/entities/patient.entity';
 import { createPatientRepository } from '../../src/modules/patients/repositories/patient.repository';
 import { patients } from '../../src/modules/patients/schema';
@@ -77,7 +78,14 @@ export async function findAuditLogs() {
   return db.select().from(auditLogs);
 }
 
+export async function clearMedicalRecords() {
+  await db.delete(prescriptionItems);
+  await db.delete(prescriptions);
+  await db.delete(medicalRecordEntries);
+}
+
 export async function clearSchedules() {
+  await clearMedicalRecords();
   await db.delete(appointments);
   await db.delete(scheduleBlocks);
   await db.delete(scheduleAvailabilities);

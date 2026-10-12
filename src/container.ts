@@ -4,6 +4,7 @@ import { env } from './env';
 import { createAuditModule } from './modules/audit/audit.module';
 import { createAuthModule } from './modules/auth/auth.module';
 import { createLgpdModule } from './modules/lgpd/lgpd.module';
+import { createMedicalRecordsModule } from './modules/medical-records/medical-records.module';
 import { createPatientsModule } from './modules/patients/patients.module';
 import { createProfessionalsModule } from './modules/professionals/professionals.module';
 import { createSchedulingModule } from './modules/scheduling/scheduling.module';
@@ -51,6 +52,15 @@ export function createContainer(deps: ContainerDeps) {
     clock: deps.clock,
     config: { timeZone: env.APP_TIMEZONE, termsVersion: env.TERMS_VERSION },
   });
+  const medicalRecords = createMedicalRecordsModule({
+    db,
+    audit: audit.service,
+    patients: patients.service,
+    professionals: professionals.service,
+    scheduling: scheduling.service,
+    clock: deps.clock,
+    config: { timeZone: env.APP_TIMEZONE, clinicalDataKey: env.CLINICAL_DATA_KEY },
+  });
 
   return {
     services: {
@@ -61,8 +71,17 @@ export function createContainer(deps: ContainerDeps) {
       patients: patients.service,
       professionals: professionals.service,
       scheduling: scheduling.service,
+      medicalRecords: medicalRecords.service,
     },
-    routes: [audit.routes, auth.routes, units.routes, patients.routes, professionals.routes, scheduling.routes] satisfies FastifyPluginAsync[],
+    routes: [
+      audit.routes,
+      auth.routes,
+      units.routes,
+      patients.routes,
+      professionals.routes,
+      scheduling.routes,
+      medicalRecords.routes,
+    ] satisfies FastifyPluginAsync[],
   };
 }
 

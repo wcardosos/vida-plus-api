@@ -19,6 +19,12 @@ const timeZone = z.string().refine((value) => {
   }
 }, 'must be a valid IANA time zone such as America/Fortaleza');
 
+const encryptionKey = z
+  .string()
+  .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'must be base64')
+  .transform((value) => Buffer.from(value, 'base64'))
+  .refine((key) => key.length === 32, 'must be a base64-encoded 32-byte key, e.g. openssl rand -base64 32');
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   HOST: z.string().default('0.0.0.0'),
@@ -28,6 +34,7 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   APP_URL: z.url().default('http://localhost:3000'),
   JWT_SECRET: z.string().min(32),
+  CLINICAL_DATA_KEY: encryptionKey,
   JWT_EXPIRES_IN: duration.prefault('1h'),
   RESET_TOKEN_TTL: duration.prefault('30min'),
   PASSWORD_SETUP_TOKEN_TTL: duration.prefault('72h'),

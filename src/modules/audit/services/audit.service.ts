@@ -12,7 +12,12 @@ export type RecordAuditInput = {
   patientId?: string | null;
 };
 
-export type AuditService = ReturnType<typeof createAuditService>;
+export type AccessDeniedResource = {
+  resourceType: AuditResourceType;
+  resourceId: string;
+};
+
+export type AuditService =ReturnType<typeof createAuditService>;
 
 export function createAuditService(deps: { repository: AuditRepository; logger: FastifyBaseLogger }) {
   const { repository, logger } = deps;
@@ -22,9 +27,10 @@ export function createAuditService(deps: { repository: AuditRepository; logger: 
     await repository.insert(log, tx);
   }
 
-  async function recordAccessDenied(ctx: RequestContext, patientId: string): Promise<void> {
+  async function recordAccessDenied(ctx: RequestContext, patientId: string, resource?: AccessDeniedResource): Promise<void> {
+    const { resourceType, resourceId } = resource ?? { resourceType: 'PATIENT', resourceId: patientId };
     try {
-      await record(ctx, { action: 'ACCESS_DENIED', resourceType: 'PATIENT', resourceId: patientId, patientId });
+      await record(ctx, { action: 'ACCESS_DENIED', resourceType, resourceId, patientId });
     } catch (error) {
       logger.error({ err: loggableError(error), userId: ctx.userId, patientId }, 'failed to record access denied audit log');
     }

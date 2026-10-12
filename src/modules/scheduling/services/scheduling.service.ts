@@ -16,7 +16,12 @@ import {
   type UpdateScheduleAvailabilityProps,
 } from '../entities/schedule-availability.entity';
 import { ScheduleBlock, type CreateScheduleBlockProps } from '../entities/schedule-block.entity';
-import type { AppointmentRepository, FutureAppointmentsFilter, Pagination } from '../repositories/appointment.repository';
+import type {
+  AppointmentRepository,
+  FutureAppointmentsFilter,
+  Pagination,
+  PatientAppointmentsFilter,
+} from '../repositories/appointment.repository';
 import type { AvailabilityFilters, ScheduleAvailabilityRepository } from '../repositories/schedule-availability.repository';
 import type { Period, ScheduleBlockRepository } from '../repositories/schedule-block.repository';
 import type { AppointmentNotifier } from './appointment-notifier';
@@ -385,6 +390,28 @@ export function createSchedulingService(deps: {
     return withReferences(await appointments.findOverlapping({ professionalId, unitId, from, to, includeCanceled: true }));
   }
 
+  async function findAppointmentForRecord(id: string, tx?: Transaction): Promise<Appointment> {
+    const appointment = tx ? await appointments.findByIdForUpdate(id, tx) : await appointments.findById(id);
+    if (!appointment) {
+      throw new NotFoundError('Appointment not found');
+    }
+    return appointment;
+  }
+
+  async function completeAppointment(id: string, tx: Transaction): Promise<void> {
+    const appointment = await findAppointmentForRecord(id, tx);
+    appointment.complete();
+    await appointments.update(appointment, tx);
+  }
+
+  async function hasLinkWithPatient(professionalId: string, patientId: string): Promise<boolean> {
+    return appointments.existsNotCanceledBetween(professionalId, patientId);
+  }
+
+  async function listByPatient(patientId: string, filter: PatientAppointmentsFilter = {}): Promise<AppointmentDetails[]> {
+    return withReferences(await appointments.findByPatient(patientId, filter));
+  }
+
   async function futureAppointmentsPendency(
     filter: Omit<FutureAppointmentsFilter, 'after'>,
     tx?: Transaction,
@@ -415,6 +442,10 @@ export function createSchedulingService(deps: {
     cancel,
     markNoShow,
     day,
+    findAppointmentForRecord,
+    completeAppointment,
+    hasLinkWithPatient,
+    listByPatient,
     futureAppointmentsPendency,
   };
 }

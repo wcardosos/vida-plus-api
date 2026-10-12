@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import Fastify from 'fastify';
+import Fastify, { type FastifyBaseLogger } from 'fastify';
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { createContainer, type Container } from './container';
@@ -19,11 +19,12 @@ export type BuildAppOptions = {
   appointmentNotifier?: AppointmentNotifier;
   clock?: () => Date;
   configureContainer?: (container: Container) => void;
+  loggerInstance?: FastifyBaseLogger;
 };
 
 export function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({
-    logger: loggerOptions,
+    ...(options.loggerInstance ? { loggerInstance: options.loggerInstance } : { logger: loggerOptions }),
     genReqId: () => randomUUID(),
     trustProxy: env.TRUST_PROXY,
   }).withTypeProvider<ZodTypeProvider>();

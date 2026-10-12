@@ -42,6 +42,7 @@ export type ScheduleAppointmentProps = {
 export class Appointment {
   static readonly maxDaysAhead = 90;
   static readonly cancellationReasonMaxLength = 200;
+  static readonly medicalRecordLeadMinutes = 15;
 
   private constructor(private readonly props: AppointmentProps) {}
 
@@ -191,5 +192,18 @@ export class Appointment {
   complete(): void {
     this.ensureScheduled();
     this.props.status = 'COMPLETED';
+  }
+
+  ensureAcceptsMedicalRecord(now: Date): void {
+    if (this.props.status !== 'SCHEDULED' && this.props.status !== 'COMPLETED') {
+      throw new DomainError(`Appointment is ${this.props.status} and does not accept medical records`);
+    }
+    if (this.props.startsAt.getTime() > now.getTime() + Appointment.medicalRecordLeadMinutes * 60_000) {
+      throw new DomainError(`Medical records are accepted from ${Appointment.medicalRecordLeadMinutes} minutes before the appointment starts`);
+    }
+  }
+
+  completesOnMedicalRecord(): boolean {
+    return this.isScheduled() && !this.isTeleconsultation();
   }
 }

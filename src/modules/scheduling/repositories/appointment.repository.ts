@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, gte, lt, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, lt, ne, sql, type SQL } from 'drizzle-orm';
 import type { Database, DbExecutor, Transaction } from '../../../db/client';
 import { Appointment, type AppointmentStatus } from '../entities/appointment.entity';
 import { appointments } from '../schema';
@@ -27,6 +27,11 @@ export type FutureAppointmentsFilter = {
   professionalId?: string;
   unitId?: string;
   after: Date;
+};
+
+export type PatientAppointmentsFilter = {
+  from?: Date;
+  to?: Date;
 };
 
 export type Pagination = {
@@ -145,6 +150,27 @@ export function createAppointmentRepository(db: Database) {
         db.select({ total: count() }).from(appointments).where(where),
       ]);
       return { items: rows.map(toEntity), total };
+    },
+
+    async findByPatient(patientId: string, filter: PatientAppointmentsFilter): Promise<Appointment[]> {
+      const conditions: SQL[] = [eq(appointments.patientId, patientId)];
+      if (filter.from) conditions.push(gte(appointments.startsAt, filter.from));
+      if (filter.to) conditions.push(lt(appointments.startsAt, filter.to));
+      const rows = await db
+        .select()
+        .from(appointments)
+        .where(and(...conditions))
+        .orderBy(desc(appointments.startsAt), desc(appointments.id));
+      return rows.map(toEntity);
+    },
+
+    async existsNotCanceledBetween(professionalId: string, patientId: string): Promise<boolean> {
+      const [row] = await db
+        .select({ id: appointments.id })
+        .from(appointments)
+        .where(and(eq(appointments.professionalId, professionalId), eq(appointments.patientId, patientId), ne(appointments.status, 'CANCELED')))
+        .limit(1);
+      return row !== undefined;
     },
 
     async lockPatientSchedule(patientId: string, executor: Transaction): Promise<void> {

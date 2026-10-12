@@ -6,7 +6,7 @@ import { afterAll, beforeEach, describe, expect, expectTypeOf, it } from 'vitest
 import { db, pool } from '../../src/db/client';
 import * as schema from '../../src/db/schema';
 import { createAuditRepository } from '../../src/modules/audit/repositories/audit.repository';
-import { createAuditService } from '../../src/modules/audit/services/audit.service';
+import { createAuditService, type AccessDeniedResource } from '../../src/modules/audit/services/audit.service';
 import type { RequestContext } from '../../src/shared/request-context';
 import { clearAuditLogs, findAuditLogs } from './helpers';
 
@@ -99,8 +99,20 @@ describe('auditService.recordAccessDenied', () => {
     });
   });
 
+  it('records the ACCESS_DENIED entry on the given resource', async () => {
+    const ctx = requestContext();
+    const patientId = randomUUID();
+    const resourceId = randomUUID();
+
+    await auditService.recordAccessDenied(ctx, patientId, { resourceType: 'MEDICAL_RECORD_ENTRY', resourceId });
+
+    const rows = await findAuditLogs();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ action: 'ACCESS_DENIED', resourceType: 'MEDICAL_RECORD_ENTRY', resourceId, patientId });
+  });
+
   it('does not accept a transaction parameter', () => {
-    expectTypeOf(auditService.recordAccessDenied).parameters.toEqualTypeOf<[RequestContext, string]>();
+    expectTypeOf(auditService.recordAccessDenied).parameters.toEqualTypeOf<[RequestContext, string, AccessDeniedResource?]>();
   });
 
   it('keeps the entry when called during a transaction that is rolled back', async () => {

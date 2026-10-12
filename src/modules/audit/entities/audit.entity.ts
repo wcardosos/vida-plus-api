@@ -5,7 +5,7 @@ import { DomainError } from '../../../shared/errors';
 export const auditActions = ['READ', 'CREATE', 'UPDATE', 'CORRECT', 'EXPORT', 'ACCESS_DENIED'] as const;
 export type AuditAction = (typeof auditActions)[number];
 
-export const auditResourceTypes = ['MEDICAL_RECORD_ENTRY', 'PRESCRIPTION', 'EXAM', 'ADMISSION', 'PATIENT'] as const;
+export const auditResourceTypes = ['MEDICAL_RECORD_ENTRY', 'PRESCRIPTION', 'EXAM', 'ADMISSION', 'PATIENT', 'PATIENT_HISTORY'] as const;
 export type AuditResourceType = (typeof auditResourceTypes)[number];
 
 export type AuditLogProps = {

@@ -239,7 +239,7 @@ describe('GET /audit-logs', () => {
     expect(spec.paths['/audit-logs'].get).toMatchObject({ tags: ['audit'], security: [{ bearerAuth: [] }] });
     expect(Object.keys(spec.paths['/audit-logs'])).toEqual(['get']);
     expect(spec.components.schemas.AuditAction.enum).toEqual(['READ', 'CREATE', 'UPDATE', 'CORRECT', 'EXPORT', 'ACCESS_DENIED']);
-    expect(spec.components.schemas.AuditResourceType.enum).toEqual(['MEDICAL_RECORD_ENTRY', 'PRESCRIPTION', 'EXAM', 'ADMISSION', 'PATIENT']);
+    expect(spec.components.schemas.AuditResourceType.enum).toEqual(['MEDICAL_RECORD_ENTRY', 'PRESCRIPTION', 'EXAM', 'ADMISSION', 'PATIENT', 'PATIENT_HISTORY']);
     expect(spec.components.schemas.AuditLog.properties).toHaveProperty('occurredAt');
   });
 });

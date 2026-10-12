@@ -83,6 +83,7 @@ export const appointments = pgTable(
     index('appointments_professional_starts_at_idx').on(table.professionalId, table.startsAt),
     index('appointments_patient_starts_at_idx').on(table.patientId, table.startsAt),
     index('appointments_unit_starts_at_idx').on(table.unitId, table.startsAt),
+    index('appointments_professional_patient_idx').on(table.professionalId, table.patientId),
     check('appointments_time_range_check', sql`${table.endsAt} > ${table.startsAt}`),
     check(
       'appointments_cancellation_reason_check',

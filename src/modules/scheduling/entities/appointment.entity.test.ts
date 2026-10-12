@@ -183,6 +183,41 @@ describe('Appointment.complete', () => {
   });
 });
 
+describe('Appointment.ensureAcceptsMedicalRecord', () => {
+  const startsAt = validProps().startsAt;
+  const minutesFromStart = (minutes: number) => new Date(startsAt.getTime() + minutes * 60_000);
+
+  it.each(['SCHEDULED', 'COMPLETED'] as const)('accepts a %s appointment that has started', (status) => {
+    expect(() => Appointment.restore(storedProps({ status })).ensureAcceptsMedicalRecord(minutesFromStart(5))).not.toThrow();
+  });
+
+  it('accepts an appointment that starts in exactly 15 minutes', () => {
+    expect(() => Appointment.restore(storedProps()).ensureAcceptsMedicalRecord(minutesFromStart(-15))).not.toThrow();
+  });
+
+  it('rejects an appointment that starts in more than 15 minutes', () => {
+    expect(() => Appointment.restore(storedProps()).ensureAcceptsMedicalRecord(minutesFromStart(-16))).toThrow(
+      new DomainError('Medical records are accepted from 15 minutes before the appointment starts'),
+    );
+  });
+
+  it.each(['CANCELED', 'NO_SHOW'] as const)('rejects a %s appointment', (status) => {
+    const appointment = Appointment.restore(storedProps({ status, cancellationReason: status === 'CANCELED' ? 'x' : null }));
+
+    expect(() => appointment.ensureAcceptsMedicalRecord(minutesFromStart(5))).toThrow(
+      new DomainError(`Appointment is ${status} and does not accept medical records`),
+    );
+  });
+});
+
+describe('Appointment.completesOnMedicalRecord', () => {
+  it('is true only for a SCHEDULED in-person appointment', () => {
+    expect(Appointment.restore(storedProps()).completesOnMedicalRecord()).toBe(true);
+    expect(Appointment.restore(storedProps({ modality: 'TELECONSULTATION' })).completesOnMedicalRecord()).toBe(false);
+    expect(Appointment.restore(storedProps({ status: 'COMPLETED' })).completesOnMedicalRecord()).toBe(false);
+  });
+});
+
 describe('Appointment.overlaps', () => {
   const at = (time: string) => new Date(`2026-10-12T${time}:00.000Z`);
 

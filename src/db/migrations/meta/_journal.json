@@ -43,6 +43,13 @@
       "when": 1791736989564,
       "tag": "0005_add_appointments_overlap_exclusion",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791816737860,
+      "tag": "0006_create_medical_records_tables",
+      "breakpoints": true
     }
   ]
 }
