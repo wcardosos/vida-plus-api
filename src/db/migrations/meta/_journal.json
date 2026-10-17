@@ -64,6 +64,13 @@
       "when": 1791818446628,
       "tag": "0008_add_medical_record_entries_admission_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792279759942,
+      "tag": "0009_add_lgpd_consents_active_purpose_unique",
+      "breakpoints": true
     }
   ]
 }

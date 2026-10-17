@@ -4,7 +4,7 @@ import { ConflictError, DomainError, NotFoundError } from '../../../shared/error
 import { loggableError } from '../../../shared/logger';
 import type { Role } from '../../../shared/roles';
 import { addDays, startOfZonedDay, toZonedDate } from '../../../shared/time-zone';
-import type { LgpdService } from '../../lgpd/services/lgpd.service';
+import type { ConsentRevocation, ConsentRevocationOutcome, LgpdService } from '../../lgpd/services/lgpd.service';
 import type { PatientsService } from '../../patients/services/patients.service';
 import type { ProfessionalDetails, ProfessionalsService } from '../../professionals/services/professionals.service';
 import type { UnitsService } from '../../units/services/units.service';
@@ -85,6 +85,8 @@ export type FutureAppointmentsPendency = {
 };
 
 type Participant = { by: 'PATIENT'; patientId: string } | { by: 'PROFESSIONAL'; professionalId: string };
+
+const consentRevokedReason = 'Teleconsultation consent revoked by the patient';
 
 export type SchedulingService = ReturnType<typeof createSchedulingService>;
 
@@ -412,6 +414,38 @@ export function createSchedulingService(deps: {
     return withReferences(await appointments.findByPatient(patientId, filter));
   }
 
+  async function cancelTeleconsultationsOnConsentRevocation(
+    revocation: ConsentRevocation,
+    tx: Transaction,
+  ): Promise<ConsentRevocationOutcome | null> {
+    if (revocation.purpose !== 'TELECONSULTATION') {
+      return null;
+    }
+    const found = await appointments.findScheduledAfterForUpdate(
+      { patientId: revocation.patientId, modality: 'TELECONSULTATION', after: revocation.at },
+      tx,
+    );
+    if (found.length === 0) {
+      return null;
+    }
+    for (const appointment of found) {
+      appointment.cancel(consentRevokedReason, 'PATIENT', revocation.at);
+      await appointments.update(appointment, tx);
+    }
+    return {
+      effect: {
+        type: 'CANCELED_TELECONSULTATIONS',
+        count: found.length,
+        appointments: found.map((appointment) => ({ id: appointment.id, startsAt: appointment.startsAt.toISOString() })),
+      },
+      afterCommit: async () => {
+        for (const appointment of found) {
+          await notify('canceled', appointment, () => notifier.appointmentCanceled(appointment));
+        }
+      },
+    };
+  }
+
   async function futureAppointmentsPendency(
     filter: Omit<FutureAppointmentsFilter, 'after'>,
     tx?: Transaction,
@@ -447,5 +481,6 @@ export function createSchedulingService(deps: {
     hasLinkWithPatient,
     listByPatient,
     futureAppointmentsPendency,
+    cancelTeleconsultationsOnConsentRevocation,
   };
 }

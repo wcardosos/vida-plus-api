@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "lgpd_consents_active_purpose_unique_idx" ON "lgpd_consents" USING btree ("patient_id","purpose") WHERE "lgpd_consents"."revoked_at" IS NULL;

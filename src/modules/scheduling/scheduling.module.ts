@@ -39,6 +39,7 @@ export function createSchedulingModule(deps: {
 
   deps.units.registerDeactivationCheck((unitId, tx) => service.futureAppointmentsPendency({ unitId }, tx));
   deps.professionals.registerPendencyCheck((target, tx) => service.futureAppointmentsPendency(target, tx));
+  deps.lgpd.registerRevocationHandler((revocation, tx) => service.cancelTeleconsultationsOnConsentRevocation(revocation, tx));
 
   return { service, routes: schedulingRoutes(service) };
 }

@@ -229,6 +229,20 @@ describe('MedicalRecordEntry.isAuthoredBy', () => {
   });
 });
 
+describe('MedicalRecordEntry.isCorrection', () => {
+  it('is false for an original entry', () => {
+    const entry = MedicalRecordEntry.create(validProps(), now);
+
+    expect(entry.isCorrection()).toBe(false);
+  });
+
+  it('is true for a correction', () => {
+    const correction = MedicalRecordEntry.create(validProps(), now).correct(correctionProps(), later);
+
+    expect(correction.isCorrection()).toBe(true);
+  });
+});
+
 describe('MedicalRecordEntry', () => {
   it('exposes no method that changes its content', () => {
     const instanceMethods = Object.getOwnPropertyNames(MedicalRecordEntry.prototype).filter((name) => {
@@ -236,6 +250,6 @@ describe('MedicalRecordEntry', () => {
       return name !== 'constructor' && typeof descriptor?.value === 'function';
     });
 
-    expect(instanceMethods.sort()).toEqual(['correct', 'isAuthoredBy']);
+    expect(instanceMethods.sort()).toEqual(['correct', 'isAuthoredBy', 'isCorrection']);
   });
 });

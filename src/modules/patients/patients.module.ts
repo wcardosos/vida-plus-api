@@ -21,5 +21,7 @@ export function createPatientsModule(deps: {
     lgpd: deps.lgpd,
     config: deps.config,
   });
+  deps.lgpd.registerPatientResolver(async (userId) => (await service.getByUserId(userId)).patient.id);
+
   return { service, routes: patientsRoutes(service) };
 }

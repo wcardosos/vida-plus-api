@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gt, gte, lt, ne, sql, type SQL } from 'drizzle-orm';
 import type { Database, DbExecutor, Transaction } from '../../../db/client';
-import { Appointment, type AppointmentStatus } from '../entities/appointment.entity';
+import { Appointment, type AppointmentStatus, type Modality } from '../entities/appointment.entity';
 import { appointments } from '../schema';
 
 type AppointmentRow = typeof appointments.$inferSelect;
@@ -25,7 +25,9 @@ export type AppointmentFilters = {
 
 export type FutureAppointmentsFilter = {
   professionalId?: string;
+  patientId?: string;
   unitId?: string;
+  modality?: Modality;
   after: Date;
 };
 
@@ -57,6 +59,15 @@ function toEntity(row: AppointmentRow): Appointment {
 }
 
 const chronological = [asc(appointments.startsAt), asc(appointments.id)];
+
+function scheduledAfter(filter: FutureAppointmentsFilter): SQL | undefined {
+  const conditions: SQL[] = [eq(appointments.status, 'SCHEDULED'), gt(appointments.startsAt, filter.after)];
+  if (filter.professionalId) conditions.push(eq(appointments.professionalId, filter.professionalId));
+  if (filter.patientId) conditions.push(eq(appointments.patientId, filter.patientId));
+  if (filter.unitId) conditions.push(eq(appointments.unitId, filter.unitId));
+  if (filter.modality) conditions.push(eq(appointments.modality, filter.modality));
+  return and(...conditions);
+}
 
 export type AppointmentRepository = ReturnType<typeof createAppointmentRepository>;
 
@@ -118,14 +129,21 @@ export function createAppointmentRepository(db: Database) {
     },
 
     async findScheduledAfter(filter: FutureAppointmentsFilter, executor: DbExecutor = db): Promise<Appointment[]> {
-      const conditions: SQL[] = [eq(appointments.status, 'SCHEDULED'), gt(appointments.startsAt, filter.after)];
-      if (filter.professionalId) conditions.push(eq(appointments.professionalId, filter.professionalId));
-      if (filter.unitId) conditions.push(eq(appointments.unitId, filter.unitId));
       const rows = await executor
         .select()
         .from(appointments)
-        .where(and(...conditions))
+        .where(scheduledAfter(filter))
         .orderBy(...chronological);
+      return rows.map(toEntity);
+    },
+
+    async findScheduledAfterForUpdate(filter: FutureAppointmentsFilter, executor: Transaction): Promise<Appointment[]> {
+      const rows = await executor
+        .select()
+        .from(appointments)
+        .where(scheduledAfter(filter))
+        .orderBy(...chronological)
+        .for('update');
       return rows.map(toEntity);
     },
 

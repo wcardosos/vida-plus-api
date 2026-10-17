@@ -1,4 +1,5 @@
-import { index, pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { index, pgEnum, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core';
 import { patients } from '../patients/schema';
 import { consentPurposes } from './entities/lgpd-consent.entity';
 
@@ -16,5 +17,8 @@ export const lgpdConsents = pgTable(
     grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
   },
-  (table) => [index('lgpd_consents_patient_id_idx').on(table.patientId)],
+  (table) => [
+    index('lgpd_consents_patient_id_idx').on(table.patientId),
+    uniqueIndex('lgpd_consents_active_purpose_unique_idx').on(table.patientId, table.purpose).where(sql`${table.revokedAt} IS NULL`),
+  ],
 );

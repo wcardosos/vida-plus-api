@@ -176,6 +176,10 @@ export class MedicalRecordEntry {
     return this.props.professionalId === professionalId;
   }
 
+  isCorrection(): boolean {
+    return this.props.previousEntryId !== null;
+  }
+
   correct(props: CorrectMedicalRecordEntryProps, now: Date): MedicalRecordEntry {
     const correctionReason = requiredText('correctionReason', props.correctionReason, MedicalRecordEntry.correctionReasonMaxLength);
     return new MedicalRecordEntry({

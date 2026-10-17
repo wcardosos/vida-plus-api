@@ -30,6 +30,42 @@ describe('LgpdConsent.grant', () => {
   });
 });
 
+describe('LgpdConsent.isActive', () => {
+  it('is true while the consent is not revoked', () => {
+    const consent = LgpdConsent.grant(patientId, 'TELECONSULTATION', '2026-10', now);
+
+    expect(consent.isActive()).toBe(true);
+  });
+});
+
+describe('LgpdConsent.revoke', () => {
+  const later = new Date('2026-10-12T09:00:00.000Z');
+
+  it('records when the consent was revoked and deactivates it', () => {
+    const consent = LgpdConsent.grant(patientId, 'TELECONSULTATION', '2026-10', now);
+
+    consent.revoke(later);
+
+    expect(consent.revokedAt).toEqual(later);
+    expect(consent.isActive()).toBe(false);
+  });
+
+  it('rejects revoking twice', () => {
+    const consent = LgpdConsent.grant(patientId, 'TELECONSULTATION', '2026-10', now);
+    consent.revoke(later);
+
+    expect(() => consent.revoke(new Date('2026-10-13T09:00:00.000Z'))).toThrow(new DomainError('Consent has already been revoked'));
+    expect(consent.revokedAt).toEqual(later);
+  });
+
+  it('rejects a revocation before the grant', () => {
+    const consent = LgpdConsent.grant(patientId, 'TELECONSULTATION', '2026-10', now);
+
+    expect(() => consent.revoke(new Date('2026-10-10T12:00:00.000Z'))).toThrow(new DomainError('revokedAt must not be before grantedAt'));
+    expect(consent.isActive()).toBe(true);
+  });
+});
+
 describe('LgpdConsent.restore', () => {
   it('rebuilds a revoked consent without revalidating', () => {
     const revokedAt = new Date('2026-10-12T00:00:00.000Z');

@@ -1,7 +1,20 @@
-import { and, eq, isNull } from 'drizzle-orm';
-import type { Database, DbExecutor } from '../../../db/client';
-import type { ConsentPurpose, LgpdConsent } from '../entities/lgpd-consent.entity';
+import { and, desc, eq, isNull } from 'drizzle-orm';
+import type { Database, DbExecutor, Transaction } from '../../../db/client';
+import { LgpdConsent, type ConsentPurpose } from '../entities/lgpd-consent.entity';
 import { lgpdConsents } from '../schema';
+
+type LgpdConsentRow = typeof lgpdConsents.$inferSelect;
+
+function toEntity(row: LgpdConsentRow): LgpdConsent {
+  return LgpdConsent.restore({
+    id: row.id,
+    patientId: row.patientId,
+    purpose: row.purpose,
+    termsVersion: row.termsVersion,
+    grantedAt: row.grantedAt,
+    revokedAt: row.revokedAt,
+  });
+}
 
 export type LgpdConsentRepository = ReturnType<typeof createLgpdConsentRepository>;
 
@@ -16,6 +29,24 @@ export function createLgpdConsentRepository(db: Database) {
         grantedAt: consent.grantedAt,
         revokedAt: consent.revokedAt,
       });
+    },
+
+    async update(consent: LgpdConsent, executor: DbExecutor = db): Promise<void> {
+      await executor.update(lgpdConsents).set({ revokedAt: consent.revokedAt }).where(eq(lgpdConsents.id, consent.id));
+    },
+
+    async findByIdForUpdate(id: string, executor: Transaction): Promise<LgpdConsent | null> {
+      const [row] = await executor.select().from(lgpdConsents).where(eq(lgpdConsents.id, id)).for('update');
+      return row ? toEntity(row) : null;
+    },
+
+    async findByPatient(patientId: string, executor: DbExecutor = db): Promise<LgpdConsent[]> {
+      const rows = await executor
+        .select()
+        .from(lgpdConsents)
+        .where(eq(lgpdConsents.patientId, patientId))
+        .orderBy(desc(lgpdConsents.grantedAt), desc(lgpdConsents.id));
+      return rows.map(toEntity);
     },
 
     async existsActive(patientId: string, purpose: ConsentPurpose, executor: DbExecutor = db): Promise<boolean> {

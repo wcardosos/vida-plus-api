@@ -33,7 +33,7 @@ export function createContainer(deps: ContainerDeps) {
     config: { appUrl: env.APP_URL, resetTokenTtlMs: env.RESET_TOKEN_TTL, setupTokenTtlMs: env.PASSWORD_SETUP_TOKEN_TTL },
   });
   const units = createUnitsModule({ db });
-  const lgpd = createLgpdModule({ db });
+  const lgpd = createLgpdModule({ db, clock: deps.clock, config: { termsVersion: env.TERMS_VERSION } });
   const patients = createPatientsModule({
     db,
     auth: auth.service,
@@ -89,6 +89,7 @@ export function createContainer(deps: ContainerDeps) {
       auth.routes,
       units.routes,
       patients.routes,
+      lgpd.routes,
       professionals.routes,
       scheduling.routes,
       admissions.routes,

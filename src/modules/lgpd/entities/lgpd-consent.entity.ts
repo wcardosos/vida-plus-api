@@ -61,4 +61,18 @@ export class LgpdConsent {
   get revokedAt() {
     return this.props.revokedAt;
   }
+
+  isActive(): boolean {
+    return this.props.revokedAt === null;
+  }
+
+  revoke(at: Date): void {
+    if (!this.isActive()) {
+      throw new DomainError('Consent has already been revoked');
+    }
+    if (at.getTime() < this.props.grantedAt.getTime()) {
+      throw new DomainError('revokedAt must not be before grantedAt');
+    }
+    this.props.revokedAt = at;
+  }
 }
